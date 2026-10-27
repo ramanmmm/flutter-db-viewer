@@ -40,6 +40,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import __version__
+from . import sql as sqlmod
 
 HERE = Path(__file__).resolve().parent
 
@@ -69,14 +70,16 @@ LIST_REMOTE = (
                for d in DB_DIRS[1:])
     + " 2>/dev/null; true"
 )
-SAFE_REMOTE = re.compile(r"^(?:%s)/[^/'\\\s]+$" % "|".join(DB_DIRS))
+# Remote names are interpolated into a shell command run as the app, so only
+# plain file-name characters are accepted (no quotes, `;`, `$`, spaces, …).
+SAFE_REMOTE = re.compile(r"^(?:%s)/[A-Za-z0-9._+-]+$" % "|".join(DB_DIRS))
 
 
 def parse_stat(out: str) -> dict[str, FileStat]:
     files = {}
     for line in out.splitlines():
         parts = line.rsplit("|", 2)
-        if len(parts) == 3 and parts[1].isdigit():
+        if len(parts) == 3 and parts[1].isdigit() and SAFE_REMOTE.match(parts[0]):
             files[parts[0]] = FileStat(int(parts[1]), parts[2])
     return files
 
@@ -129,29 +132,103 @@ class AdbSource:
             )
         return files
 
-    def pull(self, name: str, dest: Path) -> None:
+    # Files are read in chunks with `dd`, each its own short adb call: a USB
+    # hiccup costs one 4 MB retry instead of restarting a 100 MB stream, and
+    # with a local copy already present only chunks whose md5 differs on the
+    # device are transferred (a checkpoint usually touches a few).
+    CHUNK = 4 * 1024 * 1024
+    CHUNK_TIMEOUT = 30
+    RETRIES = 3
+
+    def _run(self, remote: str, timeout: float) -> bytes:
+        proc = subprocess.Popen(self._cmd(remote), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        with self._procs_lock:
+            self._procs.add(proc)
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            raise SourceError(f"adb transfer stalled for {timeout:.0f} s") from None
+        finally:
+            with self._procs_lock:
+                self._procs.discard(proc)
+        if proc.returncode != 0:
+            raise SourceError(err.decode(errors="replace").strip() or f"adb exited with {proc.returncode}")
+        return out
+
+    def chunk_hashes(self, name: str, size: int) -> list[str]:
+        n = -(-size // self.CHUNK)
+        out = self._run(
+            f"i=0; while [ $i -lt {n} ]; do dd if={name} bs={self.CHUNK} skip=$i count=1 2>/dev/null | md5sum; "
+            "i=$((i+1)); done",
+            timeout=120,
+        ).decode(errors="replace")
+        hashes = [line.split()[0] for line in out.splitlines() if line.strip()]
+        if len(hashes) != n:
+            raise SourceError("couldn't checksum the file on the device")
+        return hashes
+
+    def read_chunk(self, name: str, index: int, expected: int) -> bytes:
+        last: Exception | None = None
+        for _ in range(self.RETRIES):
+            try:
+                data = self._run(f"dd if={name} bs={self.CHUNK} skip={index} count=1 2>/dev/null", self.CHUNK_TIMEOUT)
+            except SourceError as e:
+                last = e
+                continue
+            if len(data) >= expected:
+                return data[:expected]
+            last = SourceError(f"short read ({len(data)} of {expected} bytes)")
+        raise SourceError(f"couldn't read {name} (chunk {index + 1}): {last}")
+
+    def pull(self, name: str, dest: Path, size: int | None = None, progress=None) -> int:
+        """Copy `name` to `dest`; returns the number of bytes transferred."""
         if not SAFE_REMOTE.match(name):
             raise SourceError(f"refusing odd file name {name!r}")
+        if size is None:
+            st = self.list_files().get(name)
+            if st is None:
+                raise SourceError(f"{name} is gone from the device")
+            size = st.size
+        n = -(-size // self.CHUNK)
+        todo = list(range(n))
         tmp = dest.with_suffix(dest.suffix + ".part")
-        with open(tmp, "wb") as fh:
-            proc = subprocess.Popen(
-                self._cmd(f"cat {name}"), stdout=fh, stderr=subprocess.PIPE
-            )
-            with self._procs_lock:
-                self._procs.add(proc)
+        reuse = dest.exists() and n >= 3
+        if reuse:
             try:
-                _, err = proc.communicate(timeout=300)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.communicate()
-                raise
-            finally:
-                with self._procs_lock:
-                    self._procs.discard(proc)
-        if proc.returncode != 0:
+                remote = self.chunk_hashes(name, size)
+                local = file_chunk_hashes(dest, self.CHUNK)
+                todo = [i for i in range(n) if i >= len(local) or local[i] != remote[i]]
+                clone_or_copy(dest, tmp)
+            except SourceError:
+                reuse, todo = False, list(range(n))
+        moved = 0
+        try:
+            with open(tmp, "r+b" if reuse else "wb") as fh:
+                for done, i in enumerate(todo, 1):
+                    data = self.read_chunk(name, i, min(self.CHUNK, size - i * self.CHUNK))
+                    fh.seek(i * self.CHUNK)
+                    fh.write(data)
+                    moved += len(data)
+                    if progress:
+                        progress(name, done, len(todo), n)
+                fh.truncate(size)
+        except BaseException:
             tmp.unlink(missing_ok=True)
-            raise SourceError(err.decode(errors="replace").strip() or "pull failed")
+            raise
         os.replace(tmp, dest)
+        return moved
+
+
+def file_chunk_hashes(path: Path, chunk: int) -> list[str]:
+    out = []
+    with open(path, "rb") as fh:
+        while True:
+            data = fh.read(chunk)
+            if not data:
+                return out
+            out.append(hashlib.md5(data, usedforsecurity=False).hexdigest())
 
 
 class DirSource:
@@ -169,8 +246,9 @@ class DirSource:
                 files[p.name] = FileStat(st.st_size, str(st.st_mtime_ns))
         return files
 
-    def pull(self, name: str, dest: Path) -> None:
+    def pull(self, name: str, dest: Path, size: int | None = None, progress=None) -> int:
         shutil.copyfile(self.path / name, dest)
+        return dest.stat().st_size
 
 
 class SourceError(Exception):
@@ -325,7 +403,8 @@ def diff_tables(
 class Engine:
     """Polls the source, keeps the current snapshot, and records changes."""
 
-    def __init__(self, source, workdir: Path, db: str | None = None, interval: float = 2.0):
+    def __init__(self, source, workdir: Path, db: str | None = None, interval: float = 2.0,
+                 history: sqlmod.QueryHistory | None = None):
         self.source = source
         self.workdir = Path(workdir)
         self.workdir.mkdir(parents=True, exist_ok=True)
@@ -344,6 +423,11 @@ class Engine:
         self.last_sync: float | None = None
         self.last_change: float | None = None
         self.sync_ms: int | None = None
+        self.history = history
+        self.pull_bytes = 0
+        self.device_journal: str | None = None
+        # Per-snapshot results of the slower reports (PRAGMA report, suggestions).
+        self._cache: dict = {}
         self._seen: dict[str, FileStat | None] = {}
         self._seq = 0
         self._stop = False
@@ -359,6 +443,7 @@ class Engine:
             self.tables = {}
             self.events = []
             self.marks = {}
+            self._cache = {}
             self.snapshot = None
             self.last_change = None
             self._bump({"state": "loading", "message": f"Loading {name}…"})
@@ -429,10 +514,22 @@ class Engine:
             self._bump({"state": "pulling", "message": "Pulling changes from device…"})
         base = self.workdir / "base.db"
         base_wal = self.workdir / "base.db-wal"
+        last_note = [0.0]
+
+        def progress(name, done, todo, total):
+            if time.time() - last_note[0] < 0.5 and done != todo:
+                return
+            last_note[0] = time.time()
+            chunk = getattr(self.source, "CHUNK", 0)
+            what = f"{done} of {todo} changed chunks" if todo < total else f"{done * chunk / 1048576:.0f} / {total * chunk / 1048576:.0f} MB"
+            with self.lock:
+                self._bump({"state": "pulling", "message": f"Pulling {name.rsplit('/', 1)[-1]} · {what}"})
+
+        moved = 0
         if self._seen.get("main") != main or not base.exists():
-            self.source.pull(db, base)
+            moved += self.source.pull(db, base, size=main.size, progress=progress) or 0
         if wal and wal.size > 0:
-            self.source.pull(db + "-wal", base_wal)
+            moved += self.source.pull(db + "-wal", base_wal, size=wal.size, progress=progress) or 0
         else:
             base_wal.unlink(missing_ok=True)
         # A checkpoint during the pull rewrites the main file under us; the
@@ -442,6 +539,9 @@ class Engine:
             self._seen = {}
             raise SourceError("Database checkpointed mid-pull, retrying…")
 
+        with open(base, "rb") as fh:
+            header = fh.read(20)
+        journal = "wal" if header[18:19] == b"\x02" else "rollback (delete/truncate/persist)"
         snap = self._build_snapshot(base, base_wal)
         tables = analyze(snap)
         with self.lock:
@@ -454,10 +554,13 @@ class Engine:
                 return False
             now = time.time()
             self.snapshot, self.tables = snap, tables
+            self.device_journal = journal
+            self._cache = {}
             self._seen = {"main": main, "wal": wal}
             self._record(changes, details, now)
             self.last_sync = now
             self.sync_ms = int((now - started) * 1000)
+            self.pull_bytes = moved
             self._bump({"state": "live", "message": "Live"})
         if prev_snap and prev_snap != snap:
             prev_snap.unlink(missing_ok=True)
@@ -566,6 +669,7 @@ class Engine:
                 "last_sync": self.last_sync,
                 "last_change": self.last_change,
                 "sync_ms": self.sync_ms,
+                "pull_bytes": self.pull_bytes,
                 "interval": self.interval,
                 "tables": tables,
                 "totals": {
@@ -630,6 +734,75 @@ class Engine:
         return {"columns": info.columns, "rows": out, "total": total, "page": page, "size": size,
                 "has_rowid": info.has_rowid, "sql": info.sql}
 
+    # SQL console / database report -------------------------------------------
+
+    def _current(self):
+        with self.lock:
+            if not self.snapshot:
+                raise sqlmod.QueryError("The database is still loading from the device.")
+            return self.snapshot, dict(self.tables)
+
+    def _cached(self, key, build):
+        with self.lock:
+            snap = self.snapshot
+            if key in self._cache:
+                return self._cache[key]
+        value = build()
+        with self.lock:
+            if self.snapshot == snap:
+                self._cache[key] = value
+        return value
+
+    def query(self, sql: str, limit: int = sqlmod.DEFAULT_ROW_LIMIT) -> dict:
+        snap, tables = self._current()
+        res = sqlmod.run_query(snap, sql, limit=limit)
+        res.update(sqlmod.explain(snap, sql, {n: t.rows for n, t in tables.items()}))
+        if self.history:
+            self.history.record(sql, len(res["rows"]), res["ms"])
+        return res
+
+    def explain(self, sql: str) -> dict:
+        snap, tables = self._current()
+        return sqlmod.explain(snap, sql, {n: t.rows for n, t in tables.items()})
+
+    def db_report(self) -> dict:
+        snap, _ = self._current()
+        with self.lock:
+            device = {
+                "journal_mode": self.device_journal,
+                "main": getattr(self.files.get(self.db), "size", 0),
+                "wal": getattr(self.files.get(f"{self.db}-wal"), "size", 0),
+            }
+        return self._cached("report", lambda: sqlmod.db_report(snap, device))
+
+    def check(self, kind: str) -> dict:
+        snap, _ = self._current()
+        return sqlmod.run_check(snap, kind)
+
+    def table_meta(self, table: str) -> dict:
+        snap, tables = self._current()
+        if table not in tables:
+            raise KeyError(table)
+        return self._cached(("meta", table), lambda: sqlmod.table_meta(snap, table))
+
+    def suggestions(self, table: str | None) -> dict:
+        snap, tables = self._current()
+        if table and table not in tables:
+            raise KeyError(table)
+        with self.lock:
+            changed = sorted(self.marks, key=lambda t: -max(m["ts"] for m in self.marks[t].values()))
+
+        def build():
+            sg = sqlmod.Suggester(snap, tables)
+            try:
+                return sg.for_table(table) if table else sg.global_suggestions(changed)
+            finally:
+                sg.close()
+
+        out = {"table": table, "suggestions": self._cached(("suggest", table, tuple(changed[:3])), build)}
+        out["history"] = self.history.listing() if self.history else {"starred": [], "frequent": [], "recent": []}
+        return out
+
     def wait_for_change(self, version: int, timeout: float) -> int:
         with self.lock:
             if self.version == version:
@@ -666,7 +839,30 @@ def make_handler(engine: Engine):
             self.end_headers()
             self.wfile.write(body)
 
+        def _guard(self) -> bool:
+            """Only answer pages served from this machine (blocks DNS rebinding)."""
+            host = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]").lower()
+            if host not in ("localhost", "127.0.0.1", "::1"):
+                self._json({"error": "forbidden host"}, 403)
+                return False
+            return True
+
+        def _body(self) -> dict:
+            n = int(self.headers.get("Content-Length") or 0)
+            if n > 1_000_000:
+                raise ValueError("request too large")
+            raw = self.rfile.read(n) if n else b""
+            try:
+                body = json.loads(raw or b"{}")
+            except ValueError:
+                raise ValueError("body must be JSON") from None
+            if not isinstance(body, dict):
+                raise ValueError("body must be a JSON object")
+            return body
+
         def do_GET(self):
+            if not self._guard():
+                return
             url = urllib.parse.urlparse(self.path)
             qs = {k: v[-1] for k, v in urllib.parse.parse_qs(url.query).items()}
             try:
@@ -679,42 +875,78 @@ def make_handler(engine: Engine):
                 elif url.path == "/api/state":
                     self._json(engine.state())
                 elif url.path == "/api/rows":
-                    try:
-                        res = engine.rows(
-                            qs.get("table", ""),
-                            page=max(0, int(qs.get("page", 0))),
-                            size=min(1000, max(1, int(qs.get("size", 100)))),
-                            q=qs.get("q", ""),
-                            only_changed=qs.get("changed") == "1",
-                            sort=qs.get("sort") or None,
-                            desc=qs.get("dir", "desc") != "asc",
-                        )
-                    except KeyError:
-                        return self._json({"error": "unknown table"}, 404)
+                    res = engine.rows(
+                        qs.get("table", ""),
+                        page=max(0, int(qs.get("page", 0))),
+                        size=min(1000, max(1, int(qs.get("size", 100)))),
+                        q=qs.get("q", ""),
+                        only_changed=qs.get("changed") == "1",
+                        sort=qs.get("sort") or None,
+                        desc=qs.get("dir", "desc") != "asc",
+                    )
                     self._json(res)
+                elif url.path == "/api/dbinfo":
+                    self._json(engine.db_report())
+                elif url.path == "/api/table_meta":
+                    self._json(engine.table_meta(qs.get("table", "")))
+                elif url.path == "/api/suggest":
+                    self._json(engine.suggestions(qs.get("table") or None))
+                elif url.path == "/api/history":
+                    self._json(engine.history.listing() if engine.history else {})
                 elif url.path == "/api/stream":
                     self._stream(int(qs.get("v", -1)))
                 else:
                     self._json({"error": "not found"}, 404)
             except (BrokenPipeError, ConnectionResetError):
                 pass
+            except KeyError:
+                self._json({"error": "unknown table"}, 404)
+            except sqlmod.QueryError as e:
+                self._json({"error": str(e)}, 409)
             except ValueError as e:
                 self._json({"error": str(e)}, 400)
 
         def do_POST(self):
+            if not self._guard():
+                return
+            # A JSON content type forces a CORS preflight, which this server never
+            # answers — so other websites can't drive these endpoints.
+            if not (self.headers.get("Content-Type") or "").startswith("application/json"):
+                return self._json({"error": "send application/json"}, 415)
             url = urllib.parse.urlparse(self.path)
             qs = {k: v[-1] for k, v in urllib.parse.parse_qs(url.query).items()}
-            if url.path == "/api/select" and qs.get("db"):
-                engine.select_db(qs["db"])
-                self._json({"ok": True})
-            elif url.path == "/api/clear":
-                engine.clear_marks()
-                self._json({"ok": True})
-            elif url.path == "/api/refresh":
-                engine.wake.set()
-                self._json({"ok": True})
-            else:
-                self._json({"error": "not found"}, 404)
+            try:
+                body = self._body()
+                if url.path == "/api/select" and (qs.get("db") or body.get("db")):
+                    engine.select_db(qs.get("db") or body["db"])
+                    self._json({"ok": True})
+                elif url.path == "/api/clear":
+                    engine.clear_marks()
+                    self._json({"ok": True})
+                elif url.path == "/api/refresh":
+                    engine.wake.set()
+                    self._json({"ok": True})
+                elif url.path == "/api/query":
+                    limit = min(10_000, max(1, int(body.get("limit") or sqlmod.DEFAULT_ROW_LIMIT)))
+                    self._json(engine.query(str(body.get("sql", "")), limit=limit))
+                elif url.path == "/api/explain":
+                    self._json(engine.explain(str(body.get("sql", ""))))
+                elif url.path == "/api/check":
+                    self._json(engine.check(str(body.get("kind", ""))))
+                elif url.path == "/api/history/star" and engine.history:
+                    self._json(engine.history.star(str(body.get("sql", "")), bool(body.get("star", True)),
+                                                   str(body.get("name", ""))[:120]))
+                elif url.path == "/api/history/delete" and engine.history:
+                    engine.history.delete(str(body.get("sql", "")))
+                    self._json({"ok": True})
+                else:
+                    self._json({"error": "not found"}, 404)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            except sqlmod.QueryError as e:
+                self._json({"error": str(e)}, 400)
+            except ValueError as e:
+                self._json({"error": str(e)}, 400)
 
         def _stream(self, version):
             """Server-sent events: one message per engine version bump."""
@@ -912,7 +1144,8 @@ def main(argv=None) -> int:
     # `kill` / closing the terminal should clean up like Ctrl+C does.
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     workdir = Path(tempfile.mkdtemp(prefix="flutterdb-"))
-    engine = Engine(source, workdir, db=args.db, interval=args.interval)
+    history = None if args.once else sqlmod.QueryHistory(package)
+    engine = Engine(source, workdir, db=args.db, interval=args.interval, history=history)
     reg = None
     try:
         if args.once:

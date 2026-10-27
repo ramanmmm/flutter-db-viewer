@@ -42,6 +42,17 @@ subfolder works) or pass `--package`.
 100 MB over USB 3, more over USB 2 or Wi-Fi adb. After that only changes are
 copied.
 
+**`adb transfer stalled for 30 s` / `couldn't read … (chunk N)`** — a chunk
+didn't arrive within 30 s three times in a row. The next poll retries. If it
+keeps happening, replug the cable (avoid hubs), try another USB port, or run
+`adb kill-server && adb start-server`.
+
+**SQL: `Only read-only queries run here`** — the console never writes. To try
+a change, do it in the app and watch it arrive.
+
+**SQL: `Stopped after 15 s`** — add a `WHERE`/`LIMIT`; **Explain** shows
+whether the query scans a big table.
+
 **`Database checkpointed mid-pull, retrying…`** — harmless; the app folded its
 WAL into the main file while flutterdb was copying. The next poll picks it up.
 

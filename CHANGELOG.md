@@ -4,6 +4,44 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] — 2026-10-27
+
+### Added
+- **SQL console** (SQL mode): read-only queries against the live snapshot with
+  schema-aware autocomplete (tables, columns of the tables in the query incl.
+  aliases, keywords, functions, PRAGMAs), ⌘/Ctrl+Enter to run, CSV export,
+  row drawer, and *Re-run on every change* for live queries.
+- **Query recommendations** built from the schema and verified against the data:
+  joins (declared FKs, `*_id`/`*_uuid` naming, Frappe-style `parent_uuid` +
+  `parent_doctype`, link columns holding another table's key — with match
+  rates), child counts, broken links, sync breakdowns and unsynced rows,
+  low-cardinality breakdowns, real duplicates, empty-value counts, schema and
+  index queries; plus database-wide ones (row counts, disk space, sync across tables).
+- **Query history** per app — recent, frequently run and starred queries,
+  kept across sessions in `~/.local/share/flutterdb/history/`.
+- **Plan coach**: query plan plus tips after every run (full scans of big
+  tables with the index that would help, temp b-tree sorts, correlated
+  subqueries, missing LIMIT, leading-`%` LIKE).
+- **Database view** (PRAGMA layer): `user_version`, device journal mode from the
+  file header, page size/count, free pages, auto-vacuum, encoding, schema
+  cookie; space per table and index (dbstat); every index with columns and
+  origin; on-demand `quick_check`, `integrity_check`, `foreign_key_check`.
+- Columns tab shows the table's indexes, foreign keys and triggers.
+- Pull progress in the status pill; bytes transferred per pull in the header.
+
+### Changed
+- Device files are copied in 4 MB chunks with per-chunk timeout and retries,
+  and only chunks whose md5 changed on the device are transferred. Fixes pulls
+  that stalled near the end of large files on some phones.
+- `checkLiveDb.sh` template upgrades flutterdb when the pinned release differs
+  from the installed one.
+
+### Security
+- Remote file names are restricted to plain file-name characters before being
+  used in the on-device shell command (previously `;`/`$` were not rejected).
+- The HTTP server rejects foreign `Host` headers (DNS rebinding) and non-JSON
+  POSTs (cross-site requests).
+
 ## [1.0.0] — 2026-10-27
 
 First public release.
@@ -25,4 +63,5 @@ First public release.
 - `--once` terminal summary, `--demo` built-in demo app, `--dir` for local files.
 - `install.sh` (no pip needed) and `examples/checkLiveDb.sh` per-project launcher.
 
+[1.1.0]: https://github.com/ramanmmm/flutter-db-viewer/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ramanmmm/flutter-db-viewer/releases/tag/v1.0.0

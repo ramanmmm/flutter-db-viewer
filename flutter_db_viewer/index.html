@@ -125,9 +125,96 @@
   .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12.5px; transition: transform .2s; z-index: 20; }
   .toast.show { transform: translateX(-50%); }
 
-  @media (max-width: 1100px) { .layout { grid-template-columns: 260px minmax(0, 1fr); } .feed { display: none; } }
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .modes button { border: 0; background: var(--panel); padding: 6px 4px; cursor: pointer; font-weight: 600; color: var(--muted); font-size: 12.5px; }
+  .modes button + button { border-left: 1px solid var(--line); }
+  .modes button.on { background: var(--accent); color: #fff; }
+  .thead .act { margin-left: auto; font-size: 12px; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.primary:hover:not(:disabled) { background: #2449c7; }
+  .btn.sm { padding: 1px 7px; font-size: 11.5px; }
+
+  .sqlview, .dbview { flex: 1; display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+  .ed-wrap { padding: 12px 16px 8px; border-bottom: 1px solid var(--line); }
+  .ed-head { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; }
+  .ed-head b { font-size: 14px; }
+  .ed-head span { color: var(--muted); font-size: 12px; }
+  .ed-box { position: relative; }
+  #sqlEd { width: 100%; min-height: 128px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: 13px/1.55 var(--mono); background: #fbfcfd; color: var(--ink); tab-size: 2; }
+  #sqlEd:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); background: #fff; }
+  .ac { position: absolute; z-index: 5; min-width: 240px; max-width: 420px; max-height: 260px; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(16,24,40,.12); display: none; padding: 4px 0; }
+  .ac div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 10px; font: 12.5px var(--mono); cursor: pointer; white-space: nowrap; }
+  .ac div small { color: var(--faint); font: 11px -apple-system, sans-serif; }
+  .ac div.on { background: var(--accent-soft); }
+  .ed-bar { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+  .ed-bar label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+  .ed-bar select { border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; background: #fff; }
+  .qinfo { margin-left: auto; }
+  .tips { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .tip { font-size: 12.5px; padding: 6px 10px; border-radius: 6px; background: var(--accent-soft); color: #1d3a9e; }
+  .tip.warn { background: var(--upd-bg); color: #93370d; }
+  .tip.err { background: var(--del-bg); color: #b42318; white-space: pre-wrap; }
+  details.plan { font-size: 12px; color: var(--muted); }
+  details.plan pre { margin: 4px 0 0; font: 11.5px/1.5 var(--mono); color: var(--ink); background: #fafbfc; padding: 6px 10px; border-radius: 6px; }
+  .intro { padding: 28px 24px; color: var(--muted); max-width: 640px; line-height: 1.6; }
+  .intro b { color: var(--ink); }
+  .intro kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: #fff; }
+
+  .feed-tabs { display: flex; align-items: center; gap: 2px; padding: 6px 8px 0; border-bottom: 1px solid var(--line); }
+  .feed-tabs button[data-k] { border: 0; background: none; padding: 7px 8px; cursor: pointer; color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent; font-size: 12.5px; }
+  .feed-tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+  .feed-tabs #clear { margin-left: auto; margin-bottom: 4px; }
+  .sugg { overflow: auto; flex: 1; }
+  .scope { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+  .scope button { border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 2px 10px; font-size: 11.5px; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scope button.on { background: var(--accent-soft); color: var(--accent); border-color: #c7d4fe; font-weight: 600; }
+  .sgroup { padding: 8px 12px 2px; font-size: 11px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; }
+  .sitem { padding: 7px 12px; border-bottom: 1px solid var(--line-soft); cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 6px; }
+  .sitem:hover { background: var(--bg); }
+  .sitem .st { font-weight: 600; font-size: 12.5px; word-break: break-word; }
+  .sitem .sw { color: var(--muted); font-size: 11.5px; grid-column: 1; }
+  .sitem .sa { grid-row: 1 / span 2; grid-column: 2; display: flex; gap: 2px; align-items: start; }
+  .sitem .sa button { border: 0; background: none; cursor: pointer; color: var(--faint); font-size: 13px; padding: 0 3px; }
+  .sitem .sa button:hover { color: var(--accent); }
+  .sitem .sa button.star.on { color: #f79009; }
+  .kind { display: inline-block; font-size: 10px; font-weight: 700; padding: 0 5px; border-radius: 4px; margin-right: 5px; vertical-align: 1px; background: var(--line-soft); color: var(--muted); text-transform: uppercase; }
+  .kind.join, .kind.children { background: #f4ebff; color: #6941c6; } .kind.quality { background: var(--upd-bg); color: #b54708; }
+  .kind.recent { background: var(--ins-bg); color: #067647; } .kind.group, .kind.overview { background: var(--accent-soft); color: var(--accent); }
+
+  .dbview { overflow: auto; padding: 16px; gap: 16px; background: var(--bg); }
+  .dbview > * { flex-shrink: 0; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .card b { display: block; font-size: 17px; font-weight: 650; word-break: break-all; }
+  .card span { color: var(--muted); font-size: 11.5px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .panel h4 { margin: 0; padding: 10px 14px; font-size: 13px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: center; }
+  .panel h4 small { color: var(--muted); font-weight: 450; }
+  .panel h4 .search { width: 200px; margin-left: auto; padding: 3px 8px; }
+  .panel table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .panel th, .panel td { text-align: left; padding: 5px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  .panel th { background: #fafbfc; font-weight: 600; position: sticky; top: 0; }
+  .panel .scroll { max-height: 360px; overflow: auto; }
+  .panel code { font: 11.5px var(--mono); }
+  .bar { display: grid; grid-template-columns: minmax(140px, 260px) 1fr 80px; gap: 10px; align-items: center; padding: 4px 14px; font-size: 12.5px; cursor: pointer; }
+  .bar:hover { background: var(--bg); }
+  .bar .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar .track { height: 8px; background: var(--line-soft); border-radius: 4px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--accent); border-radius: 4px; }
+  .bar .fill.idx { background: #9e77ed; }
+  .bar .val { text-align: right; color: var(--muted); }
+  .checks { display: flex; gap: 8px; padding: 10px 14px; flex-wrap: wrap; align-items: center; }
+  .checkres { padding: 0 14px 12px; font-size: 12.5px; }
+  .ok { color: #067647; font-weight: 600; } .bad { color: #b42318; font-weight: 600; }
+  .meta-sec { padding: 14px 16px 0; }
+  .meta-sec h5 { margin: 0 0 6px; font-size: 12.5px; }
+
+  .layout.sqlmode { grid-template-columns: 240px minmax(0, 1fr) 320px; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 260px minmax(0, 1fr); } .feed { display: none; }
+    .layout.sqlmode { grid-template-columns: 200px minmax(0, 1fr) 260px; } .layout.sqlmode .feed { display: flex; } }
   @media (max-width: 720px) {
-    .layout { grid-template-columns: 1fr; grid-template-rows: 40vh 1fr; }
+    .layout, .layout.sqlmode { grid-template-columns: 1fr; grid-template-rows: 40vh 1fr; }
+    .layout.sqlmode .feed { display: none; }
     aside { border-right: 0; border-bottom: 1px solid var(--line); }
     .stats { margin-left: 0; }
   }
@@ -155,6 +242,7 @@
 <div class="layout">
   <aside>
     <div class="side-head">
+      <div class="modes" id="modes"><button data-k="table" class="on">Tables</button><button data-k="sql">SQL</button><button data-k="db">Database</button></div>
       <input class="search" id="tFilter" placeholder="Filter tables…" autocomplete="off">
       <div class="row-ctl">
         <label><input type="checkbox" id="hideEmpty" checked> Hide empty</label>
@@ -167,8 +255,9 @@
   </aside>
 
   <main>
+   <div id="tableView" style="display:flex;flex-direction:column;flex:1;min-height:0">
     <div class="thead">
-      <h2><span id="tName">Select a table</span><small id="tMeta"></small></h2>
+      <h2><span id="tName">Select a table</span><small id="tMeta"></small><button class="btn act" id="queryTable" style="display:none" title="Open this table in the SQL editor">Query in SQL ▸</button></h2>
       <div class="chips" id="tChips"></div>
       <div class="tabs" id="tabs">
         <button data-k="data" class="on">Data</button><button data-k="cols">Columns</button><button data-k="sql">Schema</button>
@@ -184,11 +273,41 @@
       </div>
     </div>
     <div class="gridwrap" id="view"><div class="empty-state">Pick a table on the left to browse its rows.</div></div>
+   </div>
+
+   <div id="sqlView" class="sqlview" style="display:none">
+    <div class="ed-wrap">
+      <div class="ed-head"><b>SQL</b><span>Read-only · <b>⌘/Ctrl + Enter</b> runs · <b>Tab</b> completes names · pick a suggestion on the right</span></div>
+      <div class="ed-box">
+        <textarea id="sqlEd" spellcheck="false" autocomplete="off" placeholder="SELECT * FROM … — start typing for table and column names"></textarea>
+        <div class="ac" id="ac"></div>
+      </div>
+      <div class="ed-bar">
+        <button class="btn primary" id="runBtn">Run ▸</button>
+        <button class="btn" id="explainBtn" title="Show how SQLite will execute the query, without running it">Explain</button>
+        <button class="btn" id="starBtn" title="Save to your starred queries">☆ Save</button>
+        <label title="Run the query again every time the app changes the database"><input type="checkbox" id="liveRun"> Re-run on every change</label>
+        <label>Max rows <select id="limitSel"><option>100</option><option selected>1000</option><option>5000</option><option>10000</option></select></label>
+        <span class="qinfo num" id="qInfo"></span>
+        <button class="btn" id="csvBtn" disabled title="Download the result as CSV">CSV</button>
+      </div>
+      <div class="tips" id="tips"></div>
+    </div>
+    <div class="gridwrap" id="qres"><div class="intro">
+      <p><b>Ask the database anything.</b> Queries run on the live snapshot, read-only — the phone is never written to.</p>
+      <p>Start from a <b>suggestion</b> on the right: they're built from <i>your</i> schema and data — real joins between tables (checked against the rows), status breakdowns, sync problems, duplicates, broken links. Pick a table on the left to get suggestions for it.</p>
+      <p>Every query you run is kept in <b>history</b> for this app; <b>☆ Save</b> the good ones. After each run, tips under the editor explain how SQLite executed it and how to make it faster.</p>
+      <p>Try: <kbd>PRAGMA table_info(…)</kbd>, <kbd>EXPLAIN QUERY PLAN …</kbd>, <kbd>WITH … SELECT</kbd>, or tick <b>Re-run on every change</b> to watch a query live.</p>
+    </div></div>
+   </div>
+
+   <div id="dbView" class="dbview" style="display:none"></div>
   </main>
 
   <section class="feed">
-    <h3>Live activity <button class="btn" id="clear" title="Clear highlights and activity">Clear</button></h3>
+    <div class="feed-tabs" id="feedTabs"><button data-k="activity" class="on">Live activity</button><button data-k="suggest">Suggestions</button><button class="btn sm" id="clear" title="Clear highlights and activity">Clear</button></div>
     <div class="events" id="events"></div>
+    <div class="sugg" id="sugg" style="display:none"></div>
   </section>
 </div>
 
@@ -210,12 +329,14 @@ const pref = (k, v) => { try { if (v === undefined) return localStorage.getItem(
 
 let S = null, sel = pref('table'), tab = 'data', page = 0, sort = null, desc = true, tSort = pref('tsort') || 'rows';
 let lastEventTs = null, lastRowsKey = '', currentRows = null, seenRowMarks = new Set();
+let mode = pref('mode') || 'table', feedTab = mode === 'sql' ? 'suggest' : 'activity', scope = null;
 
 async function api(path, opts) {
   const r = await fetch(path, Object.assign({cache: 'no-store'}, opts));
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
   return r.json();
 }
+const post = (path, body) => api(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})});
 
 // ── live stream ──────────────────────────────────────────────────────────
 function connect() {
@@ -232,7 +353,11 @@ async function refresh() {
     const prev = S;
     S = await api('/api/state');
     renderHeader(); renderTables(prev); renderEvents(); renderTableHead();
-    if (sel && tab === 'data') await loadRows(false);
+    const changed = !prev || prev.last_change !== S.last_change || (!prev.tables.length && S.tables.length);
+    if (mode === 'table' && sel && tab === 'data') await loadRows(false);
+    if (mode === 'sql' && changed && $('liveRun').checked && lastSql) runQuery(true);
+    if (feedTab === 'suggest' && changed) loadSuggestions();
+    if (mode === 'db' && changed) renderDb();
   } catch (e) { setStatus({state: 'error', message: e.message}); }
   refreshing = false;
   if (again) { again = false; refresh(); }
@@ -249,7 +374,7 @@ function setStatus(st) {
 
 function renderHeader() {
   setStatus(S.status);
-  $('source').textContent = S.source + (S.sync_ms ? ` · last pull ${(S.sync_ms/1000).toFixed(1)}s` : '');
+  $('source').textContent = S.source + (S.sync_ms ? ` · last pull ${bytes(S.pull_bytes || 0)} in ${(S.sync_ms/1000).toFixed(1)}s` : '');
   const t = S.totals;
   $('sTables').textContent = fmt(t.tables); $('sNonEmpty').textContent = fmt(t.non_empty);
   $('sRows').textContent = fmt(t.rows); $('sCols').textContent = fmt(t.columns);
@@ -309,8 +434,10 @@ function renderEvents() {
 
 function renderTableHead() {
   const t = sel && S.tables.find(x => x.name === sel);
+  $('queryTable').style.display = 'none';
   if (!t) { $('tName').textContent = !sel ? 'Select a table' : S.tables.length ? sel + ' (not in this database)' : 'Loading ' + sel + '…'; $('tMeta').textContent = ''; $('tChips').innerHTML = ''; return; }
   $('tName').textContent = t.name;
+  $('queryTable').style.display = '';
   $('tMeta').textContent = `${fmt(t.rows)} rows · ${t.columns.length} columns`;
   const c = S.changed_tables[t.name];
   $('tChips').innerHTML = (t.sync ? Object.entries(t.sync).map(([k, v]) => `<span class="chip ${esc(k)}">${esc(k)} ${fmt(v)}</span>`).join('') : '')
@@ -361,10 +488,23 @@ function renderGrid(res, userAction) {
   if (!seenRowMarks.size) seenRowMarks.add('');
 }
 
-function renderCols() {
+async function renderCols() {
   const t = S.tables.find(x => x.name === sel); if (!t) return;
-  $('view').innerHTML = `<table class="cols"><thead><tr><th>#</th><th>Column</th><th>Type</th><th>Not null</th><th>Primary key</th></tr></thead><tbody>${t.columns.map((c, i) =>
-    `<tr><td class="num">${i + 1}</td><td><b>${esc(c.name)}</b></td><td>${esc(c.type || 'any')}</td><td>${c.notnull ? 'yes' : ''}</td><td>${c.pk ? 'yes' : ''}</td></tr>`).join('')}</tbody></table>`;
+  let meta = {indexes: [], foreign_keys: [], triggers: []};
+  try { meta = await api('/api/table_meta?' + new URLSearchParams({table: sel})); } catch (e) {}
+  if (tab !== 'cols' || t.name !== sel) return;
+  const lead = {}, fk = {};
+  meta.indexes.forEach(ix => ix.columns.forEach((c, i) => { (lead[c] = lead[c] || []).push(ix.name + (i ? ` (#${i + 1})` : '')); }));
+  meta.foreign_keys.forEach(f => fk[f.column] = `${f.table}.${f.to || 'rowid'}`);
+  const rows = t.columns.map((c, i) => `<tr><td class="num">${i + 1}</td><td><b>${esc(c.name)}</b></td><td>${esc(c.type || 'any')}</td><td>${c.notnull ? 'yes' : ''}</td><td>${c.pk ? 'yes' : ''}</td>
+    <td>${lead[c.name] ? `<span title="${esc(lead[c.name].join(', '))}">indexed</span>` : ''}</td><td>${fk[c.name] ? esc('→ ' + fk[c.name]) : ''}</td></tr>`).join('');
+  const ixRows = meta.indexes.map(ix => `<tr><td><code>${esc(ix.name)}</code></td><td>${esc(ix.columns.join(', '))}</td><td>${ix.unique ? 'unique' : ''}</td><td>${{c: 'CREATE INDEX', u: 'UNIQUE', pk: 'PRIMARY KEY'}[ix.origin] || esc(ix.origin)}</td></tr>`).join('');
+  const fkRows = meta.foreign_keys.map(f => `<tr><td><code>${esc(f.column)}</code></td><td>${esc(f.table)}.${esc(f.to || 'rowid')}</td><td>${esc(f.on_delete)}</td></tr>`).join('');
+  const trg = meta.triggers.map(x => `<pre class="sql">${esc(x.sql)}</pre>`).join('');
+  $('view').innerHTML = `<table class="cols"><thead><tr><th>#</th><th>Column</th><th>Type</th><th>Not null</th><th>Primary key</th><th>Index</th><th>Foreign key</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="meta-sec"><h5>Indexes (${meta.indexes.length})</h5>${ixRows ? `<div class="panel"><table><tr><th>Name</th><th>Columns</th><th></th><th>From</th></tr>${ixRows}</table></div>` : '<p class="null">None — every filter on this table is a full scan.</p>'}</div>
+    <div class="meta-sec"><h5>Foreign keys (${meta.foreign_keys.length})</h5>${fkRows ? `<div class="panel"><table><tr><th>Column</th><th>References</th><th>On delete</th></tr>${fkRows}</table></div>` : '<p class="null">None declared. Links between tables are suggested from the data in SQL → Suggestions.</p>'}</div>
+    ${trg ? `<div class="meta-sec"><h5>Triggers (${meta.triggers.length})</h5>${trg}</div>` : ''}<div style="height:16px"></div>`;
 }
 
 async function renderSql() {
@@ -381,6 +521,8 @@ function showTab() {
 }
 
 function selectTable(name, onlyChanged) {
+  if (mode === 'sql') { scope = name; sel = name; pref('table', name); renderTables(null); loadSuggestions(); return; }
+  if (mode !== 'table') setMode('table');
   sel = name; pref('table', name); page = 0; sort = null; desc = true;
   $('rFilter').value = ''; $('onlyChanged').checked = !!onlyChanged;
   if (tab !== 'data' && onlyChanged) tab = 'data';
@@ -389,11 +531,17 @@ function selectTable(name, onlyChanged) {
 
 // ── drawer ───────────────────────────────────────────────────────────────
 function openRow(i) {
-  const r = currentRows.rows[i], m = r.mark || {}, chg = new Set(m.cols || []);
-  $('dTitle').textContent = short(sel) + (r.rowid !== null ? ' · row ' + r.rowid : '');
-  $('dSub').textContent = m.kind ? `${m.kind} ${ago(m.ts)} (${clock(m.ts)})` : 'unchanged since viewer started';
-  $('dBody').innerHTML = currentRows.columns.map((c, j) => {
-    let v = r.values[j], pretty = v;
+  const r = currentRows.rows[i];
+  showRecord(currentRows.columns.map(c => c.name), r.values, short(sel) + (r.rowid !== null ? ' · row ' + r.rowid : ''), r.mark);
+}
+
+function showRecord(names, values, title, mark) {
+  const m = mark || {}, chg = new Set(m.cols || []);
+  $('dTitle').textContent = title;
+  $('dSub').textContent = m.kind ? `${m.kind} ${ago(m.ts)} (${clock(m.ts)})` : mark === undefined ? 'query result' : 'unchanged since viewer started';
+  $('dBody').innerHTML = names.map((name, j) => {
+    const c = {name};
+    let v = values[j], pretty = v;
     if (typeof v === 'string' && /^[\[{]/.test(v)) { try { pretty = JSON.stringify(JSON.parse(v), null, 2); } catch (e) {} }
     const was = chg.has(c.name) ? m.old[c.name] : undefined;
     const old = !chg.has(c.name) ? '' : was === v ? '<span class="note">edited, then changed back</span>'
@@ -405,6 +553,295 @@ function openRow(i) {
 
 let toastT;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3500); }
+
+// ── modes ────────────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m; pref('mode', m);
+  document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.k === m));
+  $('tableView').style.display = m === 'table' ? 'flex' : 'none';
+  $('sqlView').style.display = m === 'sql' ? 'flex' : 'none';
+  $('dbView').style.display = m === 'db' ? 'flex' : 'none';
+  document.querySelector('.layout').classList.toggle('sqlmode', m === 'sql');
+  if (m === 'sql') { if (scope === null && sel) scope = sel; setFeed('suggest'); setTimeout(() => $('sqlEd').focus(), 0); }
+  else if (feedTab === 'suggest') setFeed('activity');
+  if (m === 'db') renderDb();
+  if (m === 'table' && sel) showTab();
+}
+
+function setFeed(k) {
+  feedTab = k;
+  document.querySelectorAll('#feedTabs button[data-k]').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  $('events').style.display = k === 'activity' ? '' : 'none';
+  $('sugg').style.display = k === 'suggest' ? '' : 'none';
+  $('clear').style.display = k === 'activity' ? '' : 'none';
+  if (k === 'suggest') loadSuggestions();
+}
+
+// ── SQL editor ───────────────────────────────────────────────────────────
+let lastSql = '', lastRes = null, running = false;
+const KEYWORDS = ['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN', 'IS', 'NULL', 'LIKE', 'GLOB', 'BETWEEN', 'ORDER BY', 'GROUP BY', 'HAVING',
+  'LIMIT', 'OFFSET', 'DISTINCT', 'AS', 'JOIN', 'LEFT JOIN', 'INNER JOIN', 'CROSS JOIN', 'ON', 'USING', 'UNION', 'UNION ALL', 'INTERSECT', 'EXCEPT',
+  'WITH', 'RECURSIVE', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'EXISTS', 'DESC', 'ASC', 'PRAGMA', 'EXPLAIN QUERY PLAN', 'COLLATE NOCASE', 'CAST', 'VALUES'];
+const FUNCS = ['count', 'sum', 'avg', 'min', 'max', 'total', 'group_concat', 'length', 'lower', 'upper', 'trim', 'substr', 'replace', 'instr',
+  'coalesce', 'ifnull', 'nullif', 'iif', 'round', 'abs', 'typeof', 'date', 'time', 'datetime', 'julianday', 'strftime', 'unixepoch',
+  'json_extract', 'json_each', 'json_array_length', 'json_valid', 'printf', 'hex', 'random', 'quote', 'pragma_table_info', 'pragma_index_list'];
+const PRAGMAS = ['table_info', 'table_xinfo', 'table_list', 'index_list', 'index_info', 'index_xinfo', 'foreign_key_list', 'foreign_key_check',
+  'integrity_check', 'quick_check', 'user_version', 'schema_version', 'page_size', 'page_count', 'freelist_count', 'encoding', 'auto_vacuum',
+  'journal_mode', 'application_id', 'database_list', 'compile_options', 'function_list', 'pragma_list'];
+const ident = n => /^[A-Za-z_][\w$]*$/.test(n) ? n : '"' + n.replace(/"/g, '""') + '"';
+const NOT_ALIAS = new Set(['where', 'join', 'left', 'inner', 'cross', 'on', 'group', 'order', 'limit', 'union', 'using', 'having', 'natural', 'outer', 'as', 'except', 'intersect', 'window']);
+
+function aliases(text) {
+  const map = {};
+  for (const m of text.matchAll(/(?:from|join)\s+("[^"]+"|[\w$]+)(?:\s+(?:as\s+)?([A-Za-z_][\w$]*))?/gi)) {
+    const t = m[1].replace(/^"|"$/g, '');
+    map[t.toLowerCase()] = t;
+    if (m[2] && !NOT_ALIAS.has(m[2].toLowerCase())) map[m[2].toLowerCase()] = t;
+  }
+  return map;
+}
+const tableInfo = name => S && S.tables.find(t => t.name === name || t.name.toLowerCase() === String(name).toLowerCase());
+
+function acItems() {
+  const ed = $('sqlEd'), pos = ed.selectionStart, before = ed.value.slice(0, pos);
+  if (!S) return null;
+  const dot = before.match(/("?[A-Za-z_][\w$]*"?)\.([\w$]*)$/);
+  if (dot) {
+    const t = tableInfo(aliases(ed.value)[dot[1].replace(/"/g, '').toLowerCase()] || dot[1].replace(/"/g, ''));
+    if (!t) return null;
+    return {token: dot[2], items: t.columns.map(c => ({text: ident(c.name), hint: c.type || 'column'}))};
+  }
+  const tm = before.match(/[A-Za-z_][\w$]*$/);
+  const token = tm ? tm[0] : '';
+  if (!token) return null;
+  const prev = (before.slice(0, pos - token.length).match(/([A-Za-z_]+)\s*\(?\s*$/) || [])[1];
+  const pw = (prev || '').toUpperCase();
+  const tables = S.tables.map(t => ({text: ident(t.name), hint: fmt(t.rows) + ' rows'}));
+  if (['FROM', 'JOIN', 'INTO', 'TABLE', 'UPDATE'].includes(pw)) return {token, items: tables};
+  if (pw === 'PRAGMA') return {token, items: PRAGMAS.map(p => ({text: p, hint: 'pragma'}))};
+  const used = [...new Set(Object.values(aliases(ed.value)))].map(tableInfo).filter(Boolean);
+  const cols = [];
+  used.forEach(t => t.columns.forEach(c => cols.push({text: ident(c.name), hint: short(t.name)})));
+  const other = [];
+  if (!used.length) S.tables.forEach(t => t.rows && t.columns.forEach(c => other.push({text: ident(c.name), hint: short(t.name)})));
+  return {token, items: [...cols, ...tables, ...KEYWORDS.map(k => ({text: k, hint: 'keyword'})), ...FUNCS.map(f => ({text: f + '(', hint: 'function'})), ...other]};
+}
+
+let acList = [], acIdx = 0;
+function acUpdate() {
+  const r = acItems();
+  if (!r) return acHide();
+  const t = r.token.toLowerCase(), seen = new Set();
+  const starts = [], contains = [];
+  for (const it of r.items) {
+    const k = it.text.toLowerCase().replace(/"/g, '');
+    if (seen.has(it.text) || k === t) continue;
+    if (k.startsWith(t)) { starts.push(it); seen.add(it.text); }
+    else if (t.length >= 2 && k.includes(t)) { contains.push(it); seen.add(it.text); }
+  }
+  acList = [...starts, ...contains].slice(0, 14); acIdx = 0;
+  acList.token = r.token;
+  if (!acList.length) return acHide();
+  const box = $('ac');
+  box.innerHTML = acList.map((it, i) => `<div data-i="${i}" class="${i ? '' : 'on'}"><span>${esc(it.text)}</span><small>${esc(it.hint)}</small></div>`).join('');
+  const c = caretXY($('sqlEd'));
+  box.style.left = Math.min(c.x, $('sqlEd').clientWidth - 250) + 'px';
+  box.style.top = (c.y + 20) + 'px';
+  box.style.display = 'block';
+}
+function acHide() { $('ac').style.display = 'none'; acList = []; }
+function acAccept(i) {
+  const it = acList[i]; if (!it) return;
+  const ed = $('sqlEd'), pos = ed.selectionStart, tok = acList.token.length;
+  ed.setRangeText(it.text, pos - tok, pos, 'end');
+  acHide(); ed.focus(); pref('sql', ed.value);
+}
+function acMove(d) {
+  acIdx = (acIdx + d + acList.length) % acList.length;
+  [...$('ac').children].forEach((el, i) => el.classList.toggle('on', i === acIdx));
+  $('ac').children[acIdx].scrollIntoView({block: 'nearest'});
+}
+function caretXY(ta) {
+  const div = document.createElement('div'), st = getComputedStyle(ta);
+  for (const p of ['fontFamily', 'fontSize', 'lineHeight', 'paddingTop', 'paddingLeft', 'paddingRight', 'borderTopWidth', 'borderLeftWidth', 'letterSpacing', 'tabSize', 'whiteSpace', 'wordWrap'])
+    div.style[p] = st[p];
+  Object.assign(div.style, {position: 'absolute', visibility: 'hidden', whiteSpace: 'pre-wrap', wordWrap: 'break-word', width: ta.clientWidth + 'px'});
+  div.textContent = ta.value.slice(0, ta.selectionStart);
+  const span = document.createElement('span'); span.textContent = '\u200b'; div.appendChild(span);
+  document.body.appendChild(div);
+  const x = span.offsetLeft, y = span.offsetTop - ta.scrollTop;
+  div.remove();
+  return {x, y};
+}
+
+function fitEditor() {
+  const ed = $('sqlEd');
+  ed.style.height = 'auto';
+  ed.style.height = Math.min(320, Math.max(128, ed.scrollHeight + 2)) + 'px';
+}
+
+function setSql(sql, run) {
+  setMode('sql');
+  const ed = $('sqlEd'); ed.value = sql; pref('sql', sql); ed.focus(); fitEditor();
+  if (run) runQuery();
+}
+
+async function runQuery(silent) {
+  const sql = $('sqlEd').value.trim();
+  if (!sql || running) return;
+  running = true; $('runBtn').disabled = true;
+  if (!silent) $('qInfo').textContent = 'Running…';
+  try {
+    const res = await post('/api/query', {sql, limit: +$('limitSel').value});
+    lastSql = sql; lastRes = res;
+    renderResult(res, silent);
+    renderTips(res);
+    if (!silent && feedTab === 'suggest') loadSuggestions(true);
+  } catch (e) {
+    lastRes = null; $('csvBtn').disabled = true;
+    $('qInfo').textContent = '';
+    if (!silent) $('qres').innerHTML = '<div class="empty-state">The query didn\'t run — see the message above.</div>';
+    $('tips').innerHTML = `<div class="tip err">${esc(e.message)}</div>`;
+  }
+  running = false; $('runBtn').disabled = false;
+}
+
+function renderResult(res, silent) {
+  $('qInfo').textContent = `${fmt(res.rows.length)}${res.truncated ? '+' : ''} row${res.rows.length === 1 ? '' : 's'} · ${res.ms} ms${silent ? ' · re-ran ' + clock(Date.now() / 1000) : ''}`;
+  $('csvBtn').disabled = !res.columns.length;
+  if (!res.columns.length) { $('qres').innerHTML = '<div class="empty-state">Statement ran; it returns no rows.</div>'; return; }
+  if (!res.rows.length) { $('qres').innerHTML = '<div class="empty-state">No rows.</div>'; return; }
+  const head = res.columns.map(c => `<th>${esc(c)}</th>`).join('');
+  const body = res.rows.map((r, i) => `<tr data-q="${i}">${r.map(v => `<td title="${v === null ? '' : esc(String(v).slice(0, 600))}">${cell(v)}</td>`).join('')}</tr>`).join('');
+  const sc = $('qres').scrollTop;
+  $('qres').innerHTML = `<table class="grid"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`
+    + (res.truncated ? `<div class="empty-state">Showing the first ${fmt(res.limit)} rows. Raise “Max rows” or add a LIMIT.</div>` : '');
+  if (silent) $('qres').scrollTop = sc;
+}
+
+function renderTips(res) {
+  const tips = (res.tips || []).map(t => `<div class="tip ${t.level === 'warn' ? 'warn' : ''}">${t.level === 'warn' ? '⚠ ' : '💡 '}${esc(t.text)}</div>`).join('');
+  const plan = res.plan && res.plan.length ? `<details class="plan"><summary>Query plan (${res.plan.length} step${res.plan.length > 1 ? 's' : ''})</summary><pre>${esc(planTree(res.plan))}</pre></details>` : '';
+  $('tips').innerHTML = tips + plan;
+}
+function planTree(plan) {
+  const depth = {0: -1};
+  return plan.map(p => { depth[p.id] = (depth[p.parent] ?? -1) + 1; return '  '.repeat(depth[p.id]) + '└ ' + p.detail; }).join('\n');
+}
+
+async function explainOnly() {
+  const sql = $('sqlEd').value.trim(); if (!sql) return;
+  try {
+    const res = await post('/api/explain', {sql});
+    renderTips(res);
+    if (!res.plan.length) $('tips').innerHTML = '<div class="tip">Explain works for SELECT / WITH queries.</div>';
+    else $('tips').querySelector('details') && ($('tips').querySelector('details').open = true);
+  } catch (e) { $('tips').innerHTML = `<div class="tip err">${esc(e.message)}</div>`; }
+}
+
+function downloadCsv() {
+  if (!lastRes) return;
+  const q = v => v === null ? '' : /[",\n\r]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+  const csv = [lastRes.columns.map(q).join(','), ...lastRes.rows.map(r => r.map(q).join(','))].join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
+  a.download = `query-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ── suggestions + history ────────────────────────────────────────────────
+let suggData = null, suggKey = '';
+async function loadSuggestions(historyOnly) {
+  if (!S || !S.tables.length) { $('sugg').innerHTML = '<div class="feed-empty">Loading the database…</div>'; return; }
+  if (scope && !tableInfo(scope)) scope = null;
+  const key = scope || '';
+  try {
+    if (historyOnly && suggData && suggKey === key) suggData.history = await api('/api/history');
+    else { if (suggKey !== key) $('sugg').innerHTML = '<div class="feed-empty">Looking at your data…</div>'; suggData = await api('/api/suggest?' + new URLSearchParams(scope ? {table: scope} : {})); suggKey = key; }
+  } catch (e) { $('sugg').innerHTML = `<div class="feed-empty">${esc(e.message)}</div>`; return; }
+  renderSuggestions();
+}
+
+function renderSuggestions() {
+  const d = suggData, h = d.history || {};
+  const item = (q, opts) => `<div class="sitem" data-sql="${esc(q.sql)}">
+      <div class="st">${opts.kind ? `<span class="kind ${esc(opts.kind)}">${esc(opts.kind)}</span>` : ''}${esc(opts.title)}</div>
+      <div class="sa">${opts.star !== undefined ? `<button class="star ${opts.star ? 'on' : ''}" data-act="star" title="${opts.star ? 'Unstar' : 'Star'}">${opts.star ? '★' : '☆'}</button>` : ''}<button data-act="run" title="Run now">▸</button>${opts.del ? '<button data-act="del" title="Remove from history">×</button>' : ''}</div>
+      <div class="sw">${esc(opts.why)}</div></div>`;
+  const firstLine = sql => sql.split('\n').map(x => x.trim()).filter(Boolean).join(' ').slice(0, 90);
+  const histItem = q => item(q, {title: q.name || firstLine(q.sql), star: !!q.star, del: true,
+    why: q.runs ? `ran ${q.runs}× · ${fmt(q.rows)} rows · ${q.ms} ms · ${ago(q.last)}` : `saved ${ago(q.last)} · not run yet`});
+  let html = `<div class="scope"><button data-scope="" class="${scope ? '' : 'on'}">Whole database</button>${sel ? `<button data-scope="${esc(sel)}" class="${scope === sel ? 'on' : ''}" title="${esc(sel)}">${esc(short(sel))}</button>` : ''}${scope && scope !== sel ? `<button data-scope="${esc(scope)}" class="on">${esc(short(scope))}</button>` : ''}</div>`;
+  if (!scope) html += '<div class="sgroup" style="text-transform:none;font-weight:500;letter-spacing:0">Pick a table on the left for joins, breakdowns and checks built from its data.</div>';
+  if (h.starred && h.starred.length) html += '<div class="sgroup">★ Starred</div>' + h.starred.map(histItem).join('');
+  html += `<div class="sgroup">Recommended${scope ? ' for ' + esc(short(scope)) : ''}</div>` + d.suggestions.map(q => item(q, {kind: q.kind, title: q.title, why: q.why})).join('');
+  const starred = new Set((h.starred || []).map(q => q.key));
+  const freq = (h.frequent || []).filter(q => !starred.has(q.key));
+  if (freq.length) html += '<div class="sgroup">You run these often</div>' + freq.map(histItem).join('');
+  const recent = (h.recent || []).filter(q => !starred.has(q.key)).slice(0, 15);
+  if (recent.length) html += '<div class="sgroup">Recent</div>' + recent.map(histItem).join('');
+  const sc = $('sugg').scrollTop;
+  $('sugg').innerHTML = html;
+  $('sugg').scrollTop = sc;
+}
+
+// ── database view (PRAGMA layer) ─────────────────────────────────────────
+let dbIdxFilter = '', checkHtml = '';
+async function renderDb() {
+  const v = $('dbView');
+  if (!S || !S.tables.length) { v.innerHTML = '<div class="empty-state">Reading the database from the device…</div>'; return; }
+  let r;
+  try { r = await api('/api/dbinfo'); } catch (e) { v.innerHTML = `<div class="empty-state">${esc(e.message)}</div>`; return; }
+  if (mode !== 'db') return;
+  const sc = v.scrollTop, typing = document.activeElement && document.activeElement.id === 'idxFilter';
+  const pv = Object.fromEntries(r.pragmas.map(p => [p.name, p.value]));
+  const card = (val, label, title) => `<div class="card" title="${esc(title || '')}"><b class="num">${val}</b><span>${label}</span></div>`;
+  const maxB = Math.max(1, ...r.space.map(x => x.bytes));
+  const isIdx = new Set(r.indexes.map(i => i.name).concat(r.space.filter(x => x.name.startsWith('sqlite_autoindex')).map(x => x.name)));
+  const spaceRows = r.space.slice(0, 25).map(x => `<div class="bar" data-t="${esc(x.name)}" title="${esc(x.name)} · ${fmt(x.pages)} pages"><span class="nm">${isIdx.has(x.name) ? '🗂 ' : ''}${esc(x.name)}</span><div class="track"><div class="fill ${isIdx.has(x.name) ? 'idx' : ''}" style="width:${(x.bytes / maxB * 100).toFixed(1)}%"></div></div><span class="val">${bytes(x.bytes)}</span></div>`).join('');
+  const f = dbIdxFilter.toLowerCase();
+  const idx = r.indexes.filter(i => !f || (i.name + ' ' + i.table + ' ' + i.columns.join(' ')).toLowerCase().includes(f));
+  v.innerHTML = `
+    <div class="cards">
+      ${card(bytes(r.size.device_main + r.size.device_wal), 'on device (db + wal)', `main ${bytes(r.size.device_main)} + wal ${bytes(r.size.device_wal)}`)}
+      ${card(esc(pv['user_version']), 'user_version (schema)', 'Set by the app; most migration tools bump it per migration')}
+      ${card(esc(String(pv['journal_mode (device)']).split(' ')[0]), 'journal mode on device')}
+      ${card(fmt(r.counts.table), 'tables')}
+      ${card(fmt(r.counts.index), 'indexes', `${fmt(r.counts.auto_indexes)} automatic (PRIMARY KEY / UNIQUE)`)}
+      ${card(fmt(r.counts.view) + ' / ' + fmt(r.counts.trigger), 'views / triggers')}
+      ${card(bytes(r.size.free_bytes), 'free (reclaimable)', 'Unused pages; a VACUUM in the app would return this space')}
+      ${card(esc(pv['encoding']), 'encoding')}
+    </div>
+    <div class="panel"><h4>PRAGMA values <small>read from the snapshot</small></h4><table>
+      ${r.pragmas.map(p => `<tr><td><code>${esc(p.name)}</code></td><td><b>${esc(p.value)}</b></td><td class="null" style="font-style:normal">${esc(p.hint)}</td></tr>`).join('')}
+    </table></div>
+    <div class="panel"><h4>Space by table and index <small>${r.space_available ? 'from dbstat · click a table to open it' : 'dbstat isn\'t available in this SQLite build'}</small></h4>
+      <div class="scroll" style="padding:6px 0">${spaceRows || '<p class="feed-empty">—</p>'}</div></div>
+    <div class="panel"><h4>Indexes <small>${fmt(idx.length)} of ${fmt(r.indexes.length)}</small><input class="search" id="idxFilter" placeholder="Filter indexes…" value="${esc(dbIdxFilter)}"></h4>
+      <div class="scroll"><table><tr><th>Table</th><th>Index</th><th>Columns</th><th></th><th>From</th></tr>
+      ${idx.slice(0, 400).map(i => `<tr><td>${esc(i.table)}</td><td><code>${esc(i.name)}</code></td><td>${esc(i.columns.join(', '))}</td><td>${i.unique ? 'unique' : ''}${i.partial ? ' partial' : ''}</td><td>${esc(i.origin)}</td></tr>`).join('')}
+      </table></div></div>
+    <div class="panel"><h4>Health checks <small>run on the snapshot; can take a few seconds on big databases</small></h4>
+      <div class="checks"><button class="btn" data-check="quick">Quick check</button><button class="btn" data-check="integrity">Full integrity check</button><button class="btn" data-check="foreign_keys">Foreign key check</button></div>
+      <div class="checkres" id="checkRes">${checkHtml}</div></div>
+    ${r.objects.length ? `<div class="panel"><h4>Views and triggers</h4>${r.objects.map(o => `<div class="meta-sec"><h5>${esc(o.type)} <code>${esc(o.name)}</code> on ${esc(o.table)}</h5><pre class="sql" style="padding:0 0 12px">${esc(o.sql || '')}</pre></div>`).join('')}</div>` : ''}`;
+  v.scrollTop = sc;
+  const fi = $('idxFilter');
+  if (typing) { fi.focus(); fi.setSelectionRange(fi.value.length, fi.value.length); }
+  fi.oninput = () => { dbIdxFilter = fi.value; clearTimeout(fi.t); fi.t = setTimeout(renderDb, 200); };
+}
+
+async function runCheck(kind) {
+  $('checkRes').innerHTML = checkHtml = 'Running…';
+  try {
+    const r = await post('/api/check', {kind});
+    const label = {quick: 'Quick check', integrity: 'Integrity check', foreign_keys: 'Foreign key check'}[kind];
+    checkHtml = r.ok ? `<span class="ok">✓ ${label}: ok</span> · ${r.ms} ms`
+      : `<span class="bad">✗ ${label} found problems</span> · ${r.ms} ms<div class="panel" style="margin-top:6px"><table><tr>${r.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr>${r.rows.map(x => `<tr>${x.map(v => `<td>${cell(v)}</td>`).join('')}</tr>`).join('')}</table></div>`;
+    checkHtml += ` · <span class="null" style="font-style:normal">checked at ${clock(Date.now() / 1000)}</span>`;
+  } catch (e) { checkHtml = `<span class="bad">${esc(e.message)}</span>`; }
+  if ($('checkRes')) $('checkRes').innerHTML = checkHtml;
+}
 
 // ── wiring ───────────────────────────────────────────────────────────────
 $('tlist').addEventListener('click', e => { const it = e.target.closest('.titem'); if (it) selectTable(it.dataset.t); });
@@ -425,11 +862,58 @@ $('view').addEventListener('click', e => {
 });
 $('dClose').onclick = () => $('drawer').classList.remove('open');
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('drawer').classList.remove('open'); });
-$('clear').onclick = () => api('/api/clear', {method: 'POST'});
-$('dbSel').onchange = e => api('/api/select?db=' + encodeURIComponent(e.target.value), {method: 'POST'});
+$('clear').onclick = () => post('/api/clear');
+$('dbSel').onchange = e => post('/api/select', {db: e.target.value});
+document.querySelectorAll('#modes button').forEach(b => b.onclick = () => setMode(b.dataset.k));
+document.querySelectorAll('#feedTabs button[data-k]').forEach(b => b.onclick = () => setFeed(b.dataset.k));
+$('queryTable').onclick = () => { scope = sel; const t = tableInfo(sel);
+  setSql(`SELECT *\nFROM ${ident(sel)}\n${t && t.has_rowid !== false ? 'ORDER BY rowid DESC\n' : ''}LIMIT 100`, true); };
+const ed = $('sqlEd');
+ed.value = pref('sql') || '';
+ed.addEventListener('input', () => { pref('sql', ed.value); fitEditor(); acUpdate(); });
+fitEditor();
+ed.addEventListener('click', acHide);
+ed.addEventListener('blur', () => setTimeout(acHide, 150));
+ed.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); acHide(); runQuery(); return; }
+  if (acList.length && $('ac').style.display === 'block') {
+    if (e.key === 'ArrowDown') { e.preventDefault(); return acMove(1); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); return acMove(-1); }
+    if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); return acAccept(acIdx); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); return acHide(); }
+  }
+  if (e.key === 'Tab') { e.preventDefault(); ed.setRangeText('  ', ed.selectionStart, ed.selectionEnd, 'end'); }
+  if (e.ctrlKey && e.key === ' ') { e.preventDefault(); acUpdate(); }
+});
+$('ac').addEventListener('mousedown', e => { const d = e.target.closest('div[data-i]'); if (d) { e.preventDefault(); acAccept(+d.dataset.i); } });
+$('runBtn').onclick = () => runQuery();
+$('explainBtn').onclick = explainOnly;
+$('csvBtn').onclick = downloadCsv;
+$('starBtn').onclick = async () => {
+  const sql = ed.value.trim(); if (!sql) return;
+  await post('/api/history/star', {sql, star: true}); toast('Saved to ★ Starred'); setFeed('suggest'); loadSuggestions(true);
+};
+$('qres').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-q]'); if (!tr || !lastRes) return;
+  showRecord(lastRes.columns, lastRes.rows[+tr.dataset.q], 'Result row ' + (+tr.dataset.q + 1));
+});
+$('sugg').addEventListener('click', async e => {
+  const sc = e.target.closest('button[data-scope]');
+  if (sc) { scope = sc.dataset.scope || null; return loadSuggestions(); }
+  const it = e.target.closest('.sitem'); if (!it) return;
+  const act = e.target.closest('button[data-act]'), sql = it.dataset.sql;
+  if (act && act.dataset.act === 'star') { await post('/api/history/star', {sql, star: !act.classList.contains('on')}); return loadSuggestions(true); }
+  if (act && act.dataset.act === 'del') { await post('/api/history/delete', {sql}); return loadSuggestions(true); }
+  setSql(sql, !!(act && act.dataset.act === 'run'));
+});
+$('dbView').addEventListener('click', e => {
+  const ch = e.target.closest('button[data-check]'); if (ch) return runCheck(ch.dataset.check);
+  const bar = e.target.closest('.bar[data-t]'); if (bar && tableInfo(bar.dataset.t)) selectTable(bar.dataset.t);
+});
 setInterval(() => S && setStatus(S.status), 1000);
 
-refresh().then(() => { if (sel) selectTable(sel); }); connect();
+setMode(mode);
+refresh().then(() => { if (mode === 'table' && sel) selectTable(sel); if (mode === 'sql' && feedTab === 'suggest') loadSuggestions(); }); connect();
 </script>
 </body>
 </html>

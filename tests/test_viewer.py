@@ -208,15 +208,17 @@ class PickDbTest(unittest.TestCase):
             "app_flutter/app.sqlite|2000000|t\n"
             "app_flutter/app.sqlite-wal|10|t\n"
             "garbage line\n"
+            "databases/evil;id.db|10|t\n"
         )
         files = v.parse_stat(out)
-        self.assertEqual(len(files), 4)
+        self.assertEqual(len(files), 4, "unsafe names are dropped from the listing")
         self.assertEqual(v.pick_default_db(files), "app_flutter/app.sqlite")
 
     def test_remote_names_are_restricted_to_app_db_dirs(self):
         for ok in ("databases/a.db", "app_flutter/x.sqlite", "files/q.db"):
             self.assertTrue(v.SAFE_REMOTE.match(ok), ok)
-        for bad in ("../etc/passwd", "cache/a.db", "databases/a b", "databases/x'y", "databases/sub/x.db"):
+        for bad in ("../etc/passwd", "cache/a.db", "databases/a b", "databases/x'y", "databases/sub/x.db",
+                    "databases/x;id", "databases/$(id)", "databases/`id`", "databases/a|b", "databases/a&b"):
             self.assertFalse(v.SAFE_REMOTE.match(bad), bad)
         with self.assertRaises(v.SourceError):
             v.AdbSource("com.x").pull("databases/x'; rm -rf /'", Path("/dev/null"))
@@ -325,3 +327,94 @@ class HttpTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FakeAdb(v.AdbSource):
+    """AdbSource whose remote `dd` / `md5sum` commands run against a local dir."""
+
+    CHUNK = 1024
+
+    def __init__(self, root: Path):
+        super().__init__("com.example.app")
+        self.root = root
+        self.reads: list[int] = []
+        self.fail_next = 0
+
+    def _run(self, remote, timeout):
+        import hashlib
+        import re
+        m = re.match(r"dd if=(\S+) bs=(\d+) skip=(\d+) count=1", remote)
+        if m:
+            if self.fail_next:
+                self.fail_next -= 1
+                raise v.SourceError("adb transfer stalled for 30 s")
+            i = int(m.group(3))
+            self.reads.append(i)
+            data = (self.root / m.group(1)).read_bytes()
+            return data[i * self.CHUNK:(i + 1) * self.CHUNK]
+        m = re.match(r"i=0; while \[ \$i -lt (\d+) \]; do dd if=(\S+)", remote)
+        if m:
+            data = (self.root / m.group(2)).read_bytes()
+            return "".join(hashlib.md5(data[i * self.CHUNK:(i + 1) * self.CHUNK]).hexdigest() + "  -\n"
+                           for i in range(int(m.group(1)))).encode()
+        raise AssertionError(remote)
+
+
+class ChunkedPullTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        (self.root / "databases").mkdir()
+        self.remote = self.root / "databases" / "app.db"
+        self.remote.write_bytes(bytes(range(256)) * 40 + b"tail")  # 10 KB + 4 bytes → 11 chunks
+        self.dest = self.root / "local.db"
+        self.adb = FakeAdb(self.root)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def pull(self):
+        return self.adb.pull("databases/app.db", self.dest, size=self.remote.stat().st_size)
+
+    def test_full_then_incremental(self):
+        self.assertEqual(self.pull(), self.remote.stat().st_size)
+        self.assertEqual(self.dest.read_bytes(), self.remote.read_bytes())
+        self.assertEqual(len(self.adb.reads), 11)
+
+        data = bytearray(self.remote.read_bytes())
+        data[5000] ^= 0xFF  # one byte in chunk 4
+        data += b"grown"  # file grows into a new chunk
+        self.remote.write_bytes(bytes(data))
+        self.adb.reads.clear()
+        moved = self.pull()
+        self.assertEqual(self.dest.read_bytes(), bytes(data))
+        self.assertEqual(sorted(self.adb.reads), [4, 10], "only the changed and the grown chunk")
+        self.assertLess(moved, 2 * FakeAdb.CHUNK + 1)
+
+    def test_shrunk_file_is_truncated(self):
+        self.pull()
+        self.remote.write_bytes(self.remote.read_bytes()[:3000])
+        self.pull()
+        self.assertEqual(self.dest.read_bytes(), self.remote.read_bytes())
+
+    def test_stalled_chunk_is_retried(self):
+        self.adb.fail_next = 2
+        self.pull()
+        self.assertEqual(self.dest.read_bytes(), self.remote.read_bytes())
+
+    def test_persistent_failure_raises_and_leaves_no_partial_file(self):
+        self.adb.fail_next = 99
+        with self.assertRaisesRegex(v.SourceError, "chunk 1"):
+            self.pull()
+        self.assertFalse(self.dest.exists())
+        self.assertFalse(self.dest.with_suffix(".db.part").exists())
+
+    def test_progress_is_reported(self):
+        seen = []
+        self.adb.pull("databases/app.db", self.dest, size=self.remote.stat().st_size,
+                      progress=lambda name, done, todo, total: seen.append((done, todo, total)))
+        self.assertEqual(seen[-1], (11, 11, 11))
+
+    def test_unsafe_names_are_refused(self):
+        with self.assertRaises(v.SourceError):
+            self.adb.pull("databases/x;rm -rf /", self.dest, size=1)

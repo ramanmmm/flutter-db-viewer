@@ -3,7 +3,7 @@
 # flutterdb installer — no pip, no virtualenv, standard library only.
 #
 #   curl -fsSL https://raw.githubusercontent.com/ramanmmm/flutter-db-viewer/main/install.sh | sh
-#   curl -fsSL .../install.sh | FLUTTERDB_REF=v1.0.0 sh     # a specific release
+#   curl -fsSL .../install.sh | FLUTTERDB_REF=v1.1.0 sh     # a specific release
 #   sh install.sh --local                                   # from a git clone
 #   sh install.sh --uninstall
 #
