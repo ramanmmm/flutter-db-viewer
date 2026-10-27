@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flutter-db-viewer"
+description = "Live, auto-refreshing browser view of a Flutter / Android app's on-device SQLite database over adb."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Raman Mishra", email = "mishraram929@gmail.com" }]
+requires-python = ">=3.9"
+dynamic = ["version"]
+keywords = ["flutter", "android", "sqlite", "adb", "database", "debugging", "sqflite", "drift", "room"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Environment :: Web Environment",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Topic :: Database",
+  "Topic :: Software Development :: Debuggers",
+]
+
+[project.urls]
+Homepage = "https://github.com/ramanmmm/flutter-db-viewer"
+Issues = "https://github.com/ramanmmm/flutter-db-viewer/issues"
+Changelog = "https://github.com/ramanmmm/flutter-db-viewer/blob/main/CHANGELOG.md"
+
+[project.scripts]
+flutterdb = "flutter_db_viewer.viewer:main"
+
+[tool.setuptools]
+packages = ["flutter_db_viewer"]
+
+[tool.setuptools.package-data]
+flutter_db_viewer = ["index.html"]
+
+[tool.setuptools.dynamic]
+version = { attr = "flutter_db_viewer.__version__" }

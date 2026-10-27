@@ -1,0 +1,38 @@
+name: Bug report
+description: Something doesn't work as documented
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you ran, what you expected, what you got. Paste the exact error.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: flutterdb version
+      description: Output of `flutterdb --version`
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Host OS, Python version, adb version
+      placeholder: macOS 15.4, Python 3.12.2, adb 35.0.2
+  - type: input
+    id: device
+    attributes:
+      label: Device / emulator and Android version
+      placeholder: Pixel 8, Android 15
+  - type: input
+    id: db
+    attributes:
+      label: SQLite library and where the DB lives
+      placeholder: sqflite, databases/app.db
+  - type: textarea
+    id: once
+    attributes:
+      label: Output of `flutterdb --once` (redact anything private)
+      render: text

@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Device DB Live</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1b1f24; --muted: #667085; --faint: #98a2b3;
+    --line: #e4e7ec; --line-soft: #f0f2f5; --accent: #2f5bea; --accent-soft: #eef2ff;
+    --ins: #12b76a; --ins-bg: #ecfdf3; --upd: #f79009; --upd-bg: #fffaeb; --del: #f04438; --del-bg: #fef3f2;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; display: flex; flex-direction: column; }
+  button, input, select { font: inherit; color: inherit; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .brand { display: flex; flex-direction: column; min-width: 0; }
+  .brand h1 { font-size: 15px; margin: 0; font-weight: 650; }
+  .brand small { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 550; background: var(--line-soft); color: var(--muted); }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+  .pill.live { background: var(--ins-bg); color: #067647; } .pill.live i { background: var(--ins); animation: beat 2s infinite; }
+  .pill.pulling, .pill.loading, .pill.starting { background: var(--accent-soft); color: var(--accent); } .pill.pulling i, .pill.loading i, .pill.starting i { background: var(--accent); animation: beat .8s infinite; }
+  .pill.error { background: var(--del-bg); color: #b42318; } .pill.error i { background: var(--del); }
+  @keyframes beat { 50% { opacity: .35; } }
+  .stats { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .stat { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; min-width: 84px; }
+  .stat b { display: block; font-size: 15px; font-weight: 650; }
+  .stat span { color: var(--muted); font-size: 11px; }
+  .stat.warn b { color: #b54708; }
+  select.db { border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; background: var(--panel); max-width: 240px; }
+  .err { background: var(--del-bg); color: #b42318; padding: 8px 16px; border-bottom: 1px solid #fecdca; font-size: 12.5px; display: none; }
+
+  .layout { flex: 1; display: grid; grid-template-columns: 300px minmax(0, 1fr) 290px; min-height: 0; }
+  aside, .feed { background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+  aside { border-right: 1px solid var(--line); }
+  .feed { border-left: 1px solid var(--line); }
+  .side-head { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+  .search { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; background: var(--bg); }
+  .search:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); background: #fff; }
+  .row-ctl { display: flex; gap: 8px; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12px; }
+  .row-ctl label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { border: 0; background: none; padding: 2px 8px; cursor: pointer; font-size: 11.5px; color: var(--muted); }
+  .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .tlist { overflow: auto; flex: 1; padding: 4px 0; }
+  .titem { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px 12px; cursor: pointer; border-left: 3px solid transparent; }
+  .titem:hover { background: var(--bg); }
+  .titem.sel { background: var(--accent-soft); border-left-color: var(--accent); }
+  .titem .nm { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .titem .nm em { font-style: normal; color: var(--faint); font-weight: 400; }
+  .titem .ct { text-align: right; font-weight: 600; }
+  .titem .sub { color: var(--muted); font-size: 11.5px; grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; }
+  .titem.empty .nm, .titem.empty .ct { color: var(--faint); font-weight: 400; }
+  .badge { font-size: 10.5px; font-weight: 650; padding: 0 6px; border-radius: 99px; }
+  .badge.ins { background: var(--ins-bg); color: #067647; } .badge.upd { background: var(--upd-bg); color: #b54708; }
+  .titem.flash { animation: flash 1.6s ease-out; }
+  @keyframes flash { 0% { background: #d1fadf; } 100% { background: transparent; } }
+
+  main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .thead { padding: 12px 16px 0; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .thead h2 { margin: 0; font-size: 16px; font-weight: 650; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; word-break: break-all; }
+  .thead h2 small { font-size: 12px; color: var(--muted); font-weight: 450; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .chip { font-size: 11.5px; padding: 1px 8px; border-radius: 99px; background: var(--line-soft); color: var(--muted); }
+  .chip.synced { background: var(--ins-bg); color: #067647; } .chip.dirty, .chip.pending { background: var(--upd-bg); color: #b54708; } .chip.error, .chip.failed { background: var(--del-bg); color: #b42318; }
+  .tabs { display: flex; gap: 2px; margin-top: 10px; }
+  .tabs button { border: 0; background: none; padding: 7px 12px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; font-weight: 550; }
+  .tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+  .toolbar { display: flex; gap: 10px; align-items: center; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .toolbar .search { width: 260px; max-width: 100%; }
+  .btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  .btn:hover:not(:disabled) { background: var(--bg); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .pager { margin-left: auto; display: flex; gap: 6px; align-items: center; color: var(--muted); }
+  .gridwrap { flex: 1; overflow: auto; background: var(--panel); min-height: 0; }
+  table.grid { border-collapse: separate; border-spacing: 0; min-width: 100%; font-size: 12.5px; }
+  .grid th { position: sticky; top: 0; z-index: 1; background: #fafbfc; text-align: left; font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; cursor: pointer; user-select: none; }
+  .grid th small { display: block; color: var(--faint); font-weight: 450; font-size: 10.5px; }
+  .grid th.sorted { color: var(--accent); }
+  .grid td { padding: 5px 10px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  .grid td.rid { color: var(--faint); font-family: var(--mono); font-size: 11.5px; position: sticky; left: 0; background: inherit; }
+  .grid tr { background: var(--panel); cursor: pointer; }
+  .grid tbody tr:hover { background: #f5f8ff; }
+  .grid tr.inserted { background: var(--ins-bg); box-shadow: inset 3px 0 var(--ins); }
+  .grid tr.updated { background: var(--upd-bg); box-shadow: inset 3px 0 var(--upd); }
+  .grid td.cell-chg { background: #fef0c7; font-weight: 600; }
+  .grid tr.fresh { animation: fresh 2.4s ease-out; }
+  @keyframes fresh { 0% { background: #a6f4c5; } }
+  .null { color: var(--faint); font-style: italic; }
+  .empty-state { padding: 48px 16px; text-align: center; color: var(--muted); }
+  .cols { width: 100%; border-collapse: collapse; }
+  .cols th, .cols td { text-align: left; padding: 6px 16px; border-bottom: 1px solid var(--line-soft); }
+  .cols th { background: #fafbfc; position: sticky; top: 0; font-weight: 600; }
+  pre.sql { margin: 0; padding: 16px; font: 12px/1.6 var(--mono); white-space: pre-wrap; }
+
+  .feed h3 { margin: 0; font-size: 13px; padding: 12px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .events { overflow: auto; flex: 1; }
+  .ev { padding: 8px 12px; border-bottom: 1px solid var(--line-soft); cursor: pointer; }
+  .ev:hover { background: var(--bg); }
+  .ev .t { color: var(--faint); font-size: 11px; }
+  .ev .n { font-weight: 600; word-break: break-all; }
+  .ev .d { display: flex; gap: 6px; margin-top: 2px; flex-wrap: wrap; }
+  .ev .d span { font-size: 11.5px; font-weight: 600; }
+  .ev .d .i { color: #067647; } .ev .d .u { color: #b54708; } .ev .d .x { color: #b42318; }
+  .ev.new { animation: flash 2s ease-out; }
+  .feed-empty { padding: 20px 12px; color: var(--muted); font-size: 12.5px; }
+
+  .drawer { position: fixed; inset: 0 0 0 auto; width: min(560px, 100vw); background: var(--panel); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(16,24,40,.12); transform: translateX(105%); transition: transform .18s; display: flex; flex-direction: column; z-index: 10; }
+  .drawer.open { transform: none; }
+  .drawer header { position: static; }
+  .drawer .body { overflow: auto; flex: 1; }
+  .kv { display: grid; grid-template-columns: minmax(120px, 34%) 1fr; border-bottom: 1px solid var(--line-soft); }
+  .kv > div { padding: 6px 12px; word-break: break-word; }
+  .kv .k { color: var(--muted); font-family: var(--mono); font-size: 11.5px; background: #fafbfc; }
+  .kv .v { white-space: pre-wrap; font-family: var(--mono); font-size: 12px; }
+  .kv.chg .v { background: #fef0c7; }
+  .kv .old { color: #b42318; text-decoration: line-through; display: block; }
+  .kv .note { color: var(--muted); font: italic 11px/1.4 -apple-system, sans-serif; display: block; }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12.5px; transition: transform .2s; z-index: 20; }
+  .toast.show { transform: translateX(-50%); }
+
+  @media (max-width: 1100px) { .layout { grid-template-columns: 260px minmax(0, 1fr); } .feed { display: none; } }
+  @media (max-width: 720px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: 40vh 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); }
+    .stats { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>Device DB Live</h1>
+    <small id="source">—</small>
+  </div>
+  <select class="db" id="dbSel" title="Database file on the device"></select>
+  <span class="pill" id="status"><i></i><span>Connecting…</span></span>
+  <div class="stats">
+    <div class="stat"><b class="num" id="sTables">—</b><span>tables</span></div>
+    <div class="stat"><b class="num" id="sNonEmpty">—</b><span>with data</span></div>
+    <div class="stat"><b class="num" id="sRows">—</b><span>rows</span></div>
+    <div class="stat"><b class="num" id="sCols">—</b><span>columns</span></div>
+    <div class="stat"><b class="num" id="sSize">—</b><span id="sSizeSub">size</span></div>
+    <div class="stat" id="sUnsyncedBox"><b class="num" id="sUnsynced">—</b><span>unsynced</span></div>
+  </div>
+</header>
+<div class="err" id="err"></div>
+
+<div class="layout">
+  <aside>
+    <div class="side-head">
+      <input class="search" id="tFilter" placeholder="Filter tables…" autocomplete="off">
+      <div class="row-ctl">
+        <label><input type="checkbox" id="hideEmpty" checked> Hide empty</label>
+        <div class="seg" id="tSort">
+          <button data-k="rows" class="on">Rows</button><button data-k="name">Name</button><button data-k="recent">Recent</button>
+        </div>
+      </div>
+    </div>
+    <div class="tlist" id="tlist"></div>
+  </aside>
+
+  <main>
+    <div class="thead">
+      <h2><span id="tName">Select a table</span><small id="tMeta"></small></h2>
+      <div class="chips" id="tChips"></div>
+      <div class="tabs" id="tabs">
+        <button data-k="data" class="on">Data</button><button data-k="cols">Columns</button><button data-k="sql">Schema</button>
+      </div>
+    </div>
+    <div class="toolbar" id="toolbar" style="display:none">
+      <input class="search" id="rFilter" placeholder="Search all columns…" autocomplete="off">
+      <label><input type="checkbox" id="onlyChanged"> Only new / changed</label>
+      <div class="pager">
+        <span class="num" id="pInfo"></span>
+        <button class="btn" id="pPrev">‹</button>
+        <button class="btn" id="pNext">›</button>
+      </div>
+    </div>
+    <div class="gridwrap" id="view"><div class="empty-state">Pick a table on the left to browse its rows.</div></div>
+  </main>
+
+  <section class="feed">
+    <h3>Live activity <button class="btn" id="clear" title="Clear highlights and activity">Clear</button></h3>
+    <div class="events" id="events"></div>
+  </section>
+</div>
+
+<div class="drawer" id="drawer">
+  <header><div class="brand"><h1 id="dTitle">Row</h1><small id="dSub"></small></div><button class="btn" id="dClose" style="margin-left:auto">Close</button></header>
+  <div class="body" id="dBody"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = n => (n ?? 0).toLocaleString('en-IN');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bytes = n => n < 1024 ? n + ' B' : n < 1048576 ? (n/1024).toFixed(1) + ' KB' : n < 1073741824 ? (n/1048576).toFixed(1) + ' MB' : (n/1073741824).toFixed(2) + ' GB';
+const ago = ts => { if (!ts) return '—'; const s = Math.max(0, Math.round(Date.now()/1000 - ts)); return s < 5 ? 'just now' : s < 60 ? s + 's ago' : s < 3600 ? Math.floor(s/60) + 'm ago' : Math.floor(s/3600) + 'h ago'; };
+const clock = ts => new Date(ts * 1000).toLocaleTimeString('en-IN', {hour12: false});
+const short = n => n.replace(/^docs__/, '');
+const pref = (k, v) => { try { if (v === undefined) return localStorage.getItem('dbv.' + k); localStorage.setItem('dbv.' + k, v); } catch (e) { return null; } };
+
+let S = null, sel = pref('table'), tab = 'data', page = 0, sort = null, desc = true, tSort = pref('tsort') || 'rows';
+let lastEventTs = null, lastRowsKey = '', currentRows = null, seenRowMarks = new Set();
+
+async function api(path, opts) {
+  const r = await fetch(path, Object.assign({cache: 'no-store'}, opts));
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+  return r.json();
+}
+
+// ── live stream ──────────────────────────────────────────────────────────
+function connect() {
+  const es = new EventSource('/api/stream?v=-1');
+  es.onmessage = () => refresh();
+  es.onerror = () => { setStatus({state: 'error', message: 'Viewer server not reachable — is db_viewer.py still running?'}); es.close(); setTimeout(connect, 2000); };
+}
+
+let refreshing = false, again = false;
+async function refresh() {
+  if (refreshing) { again = true; return; }
+  refreshing = true;
+  try {
+    const prev = S;
+    S = await api('/api/state');
+    renderHeader(); renderTables(prev); renderEvents(); renderTableHead();
+    if (sel && tab === 'data') await loadRows(false);
+  } catch (e) { setStatus({state: 'error', message: e.message}); }
+  refreshing = false;
+  if (again) { again = false; refresh(); }
+}
+
+function setStatus(st) {
+  const p = $('status'); p.className = 'pill ' + st.state;
+  const label = st.state === 'live' ? 'Live · synced ' + ago(S && S.last_sync) : st.state === 'error' ? 'Error' : st.message;
+  p.querySelector('span').textContent = label;
+  p.title = st.message || '';
+  $('err').style.display = st.state === 'error' ? 'block' : 'none';
+  $('err').textContent = st.message || '';
+}
+
+function renderHeader() {
+  setStatus(S.status);
+  $('source').textContent = S.source + (S.sync_ms ? ` · last pull ${(S.sync_ms/1000).toFixed(1)}s` : '');
+  const t = S.totals;
+  $('sTables').textContent = fmt(t.tables); $('sNonEmpty').textContent = fmt(t.non_empty);
+  $('sRows').textContent = fmt(t.rows); $('sCols').textContent = fmt(t.columns);
+  $('sSize').textContent = bytes(S.size.main + S.size.wal);
+  $('sSizeSub').textContent = `size (wal ${bytes(S.size.wal)})`;
+  $('sUnsynced').textContent = fmt(t.unsynced);
+  $('sUnsyncedBox').className = 'stat' + (t.unsynced ? ' warn' : '');
+  const dbSel = $('dbSel'), want = S.dbs.map(d => d.name + d.size).join();
+  if (dbSel.dataset.k !== want + S.db) {
+    dbSel.innerHTML = S.dbs.map(d => `<option value="${esc(d.name)}" ${d.name === S.db ? 'selected' : ''}>${esc(d.name)} · ${bytes(d.size)}</option>`).join('');
+    dbSel.dataset.k = want + S.db;
+  }
+}
+
+function renderTables(prev) {
+  const f = $('tFilter').value.trim().toLowerCase(), hide = $('hideEmpty').checked;
+  const ch = S.changed_tables;
+  let list = S.tables.filter(t => (!hide || t.rows || t.name === sel || ch[t.name]) && (!f || t.name.toLowerCase().includes(f)));
+  const by = {rows: (a, b) => b.rows - a.rows || a.name.localeCompare(b.name),
+              name: (a, b) => a.name.localeCompare(b.name),
+              recent: (a, b) => ((ch[b.name] || {}).last || 0) - ((ch[a.name] || {}).last || 0) || b.rows - a.rows};
+  list.sort(by[tSort]);
+  const prevRows = prev ? Object.fromEntries(prev.tables.map(t => [t.name, t.rows])) : null;
+  $('tlist').innerHTML = list.map(t => {
+    const c = ch[t.name], grew = prevRows && prevRows[t.name] !== undefined && prevRows[t.name] !== t.rows;
+    const pre = t.name.startsWith('docs__') ? '<em>docs__</em>' : '';
+    const sync = t.sync ? Object.entries(t.sync).filter(([k]) => k !== 'synced').map(([k, v]) => `<span class="badge upd">${esc(k)} ${fmt(v)}</span>`).join('') : '';
+    return `<div class="titem ${t.name === sel ? 'sel' : ''} ${t.rows ? '' : 'empty'} ${grew || (c && prev && !prev.changed_tables[t.name]) ? 'flash' : ''}" data-t="${esc(t.name)}">
+      <div class="nm" title="${esc(t.name)}">${pre}${esc(short(t.name))}</div><div class="ct num">${fmt(t.rows)}</div>
+      <div class="sub">${t.columns.length} cols ${c && c.inserted ? `<span class="badge ins">+${fmt(c.inserted)} new</span>` : ''}${c && c.updated ? `<span class="badge upd">${fmt(c.updated)} edited</span>` : ''}${sync}</div></div>`;
+  }).join('') || '<div class="feed-empty">No tables match.</div>';
+}
+
+function renderEvents() {
+  const evs = S.events;
+  // The first render only sets the baseline, so the backlog doesn't toast.
+  if (lastEventTs === null) lastEventTs = evs.length ? evs[0].ts : 0;
+  const fresh = evs.filter(e => e.ts > lastEventTs);
+  if (!evs.length) { $('events').innerHTML = '<div class="feed-empty">Waiting for changes… Add or edit an entry in the app and it will appear here within a few seconds.</div>'; return; }
+  $('events').innerHTML = evs.map(e => {
+    const parts = [];
+    if (e.created) parts.push('<span class="i">table created</span>');
+    if (e.dropped) parts.push('<span class="x">table dropped</span>');
+    if (e.inserted) parts.push(`<span class="i">+${fmt(e.inserted)} inserted</span>`);
+    if (e.updated) parts.push(`<span class="u">${fmt(e.updated)} updated</span>`);
+    if (e.deleted) parts.push(`<span class="x">−${fmt(e.deleted)} deleted</span>`);
+    if (e.count_delta) parts.push(`<span class="u">${e.count_delta > 0 ? '+' : ''}${fmt(e.count_delta)} rows</span>`);
+    return `<div class="ev ${e.ts > lastEventTs ? 'new' : ''}" data-t="${esc(e.table)}"><div class="t">${clock(e.ts)} · ${ago(e.ts)}</div><div class="n">${esc(e.table)}</div><div class="d">${parts.join('')}</div></div>`;
+  }).join('');
+  if (fresh.length) {
+    const ins = fresh.reduce((a, e) => a + e.inserted, 0), upd = fresh.reduce((a, e) => a + e.updated, 0), del = fresh.reduce((a, e) => a + e.deleted, 0);
+    const what = [ins && `+${fmt(ins)} new`, upd && `${fmt(upd)} updated`, del && `${fmt(del)} deleted`].filter(Boolean).join(', ') || 'Schema change';
+    toast(`${what} · ${[...new Set(fresh.map(e => short(e.table)))].slice(0, 3).join(', ')}`);
+    lastEventTs = evs[0].ts;
+  }
+}
+
+function renderTableHead() {
+  const t = sel && S.tables.find(x => x.name === sel);
+  if (!t) { $('tName').textContent = !sel ? 'Select a table' : S.tables.length ? sel + ' (not in this database)' : 'Loading ' + sel + '…'; $('tMeta').textContent = ''; $('tChips').innerHTML = ''; return; }
+  $('tName').textContent = t.name;
+  $('tMeta').textContent = `${fmt(t.rows)} rows · ${t.columns.length} columns`;
+  const c = S.changed_tables[t.name];
+  $('tChips').innerHTML = (t.sync ? Object.entries(t.sync).map(([k, v]) => `<span class="chip ${esc(k)}">${esc(k)} ${fmt(v)}</span>`).join('') : '')
+    + (c && c.inserted ? `<span class="chip synced">+${fmt(c.inserted)} new (last 15 min)</span>` : '')
+    + (c && c.updated ? `<span class="chip dirty">${fmt(c.updated)} edited (last 15 min)</span>` : '');
+}
+
+// ── rows / columns / schema ──────────────────────────────────────────────
+async function loadRows(userAction) {
+  const q = $('rFilter').value.trim(), only = $('onlyChanged').checked;
+  const params = new URLSearchParams({table: sel, page, size: 100, q, changed: only ? 1 : 0, dir: desc ? 'desc' : 'asc'});
+  if (sort) params.set('sort', sort);
+  if (!S || !S.tables.length) { $('view').innerHTML = '<div class="empty-state">Reading the database from the device…</div>'; return; }
+  let res;
+  try { res = await api('/api/rows?' + params); } catch (e) { $('view').innerHTML = `<div class="empty-state">${esc(e.message)}</div>`; return; }
+  const key = JSON.stringify([params.toString(), res.total, res.rows.map(r => [r.rowid, r.mark && r.mark.ts])]);
+  if (!userAction && key === lastRowsKey && tab === 'data') return;
+  lastRowsKey = key; currentRows = res;
+  renderGrid(res, userAction);
+}
+
+function cell(v) {
+  if (v === null || v === undefined) return '<span class="null">null</span>';
+  const s = String(v);
+  return esc(s.length > 140 ? s.slice(0, 140) + '…' : s);
+}
+
+function renderGrid(res, userAction) {
+  $('pInfo').textContent = res.total ? `${fmt(res.page * res.size + 1)}–${fmt(Math.min(res.total, (res.page + 1) * res.size))} of ${fmt(res.total)}` : '0 rows';
+  $('pPrev').disabled = res.page === 0;
+  $('pNext').disabled = (res.page + 1) * res.size >= res.total;
+  if (!res.rows.length) {
+    $('view').innerHTML = `<div class="empty-state">${$('onlyChanged').checked ? 'No new or changed rows in this table in the last 15 minutes.' : $('rFilter').value ? 'No rows match your search.' : 'This table is empty.'}</div>`;
+    return;
+  }
+  const scroll = $('view').scrollTop, left = $('view').scrollLeft;
+  const head = (res.has_rowid ? '<th data-c="">rowid</th>' : '') + res.columns.map(c =>
+    `<th data-c="${esc(c.name)}" class="${sort === c.name ? 'sorted' : ''}">${esc(c.name)}${sort === c.name ? (desc ? ' ↓' : ' ↑') : ''}<small>${esc(c.type || 'any')}${c.pk ? ' · pk' : ''}</small></th>`).join('');
+  const body = res.rows.map((r, i) => {
+    const m = r.mark, chg = new Set(m && m.cols || []);
+    const k = m ? sel + ':' + r.rowid + ':' + m.ts : '';
+    const fresh = m && !seenRowMarks.has(k) && seenRowMarks.size; if (k) seenRowMarks.add(k);
+    return `<tr data-i="${i}" class="${m ? m.kind : ''} ${fresh ? 'fresh' : ''}">${res.has_rowid ? `<td class="rid">${r.rowid}</td>` : ''}${r.values.map((v, j) =>
+      `<td class="${chg.has(res.columns[j].name) ? 'cell-chg' : ''}" title="${v === null ? '' : esc(String(v).slice(0, 600))}">${cell(v)}</td>`).join('')}</tr>`;
+  }).join('');
+  $('view').innerHTML = `<table class="grid"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  if (!userAction) { $('view').scrollTop = scroll; $('view').scrollLeft = left; }
+  if (!seenRowMarks.size) seenRowMarks.add('');
+}
+
+function renderCols() {
+  const t = S.tables.find(x => x.name === sel); if (!t) return;
+  $('view').innerHTML = `<table class="cols"><thead><tr><th>#</th><th>Column</th><th>Type</th><th>Not null</th><th>Primary key</th></tr></thead><tbody>${t.columns.map((c, i) =>
+    `<tr><td class="num">${i + 1}</td><td><b>${esc(c.name)}</b></td><td>${esc(c.type || 'any')}</td><td>${c.notnull ? 'yes' : ''}</td><td>${c.pk ? 'yes' : ''}</td></tr>`).join('')}</tbody></table>`;
+}
+
+async function renderSql() {
+  const res = await api('/api/rows?' + new URLSearchParams({table: sel, size: 1}));
+  $('view').innerHTML = `<pre class="sql">${esc(res.sql || '(no schema)')}</pre>`;
+}
+
+function showTab() {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.k === tab));
+  $('toolbar').style.display = tab === 'data' && sel ? 'flex' : 'none';
+  if (!sel) return;
+  lastRowsKey = '';
+  if (tab === 'data') loadRows(true); else if (tab === 'cols') renderCols(); else renderSql();
+}
+
+function selectTable(name, onlyChanged) {
+  sel = name; pref('table', name); page = 0; sort = null; desc = true;
+  $('rFilter').value = ''; $('onlyChanged').checked = !!onlyChanged;
+  if (tab !== 'data' && onlyChanged) tab = 'data';
+  renderTables(null); renderTableHead(); showTab();
+}
+
+// ── drawer ───────────────────────────────────────────────────────────────
+function openRow(i) {
+  const r = currentRows.rows[i], m = r.mark || {}, chg = new Set(m.cols || []);
+  $('dTitle').textContent = short(sel) + (r.rowid !== null ? ' · row ' + r.rowid : '');
+  $('dSub').textContent = m.kind ? `${m.kind} ${ago(m.ts)} (${clock(m.ts)})` : 'unchanged since viewer started';
+  $('dBody').innerHTML = currentRows.columns.map((c, j) => {
+    let v = r.values[j], pretty = v;
+    if (typeof v === 'string' && /^[\[{]/.test(v)) { try { pretty = JSON.stringify(JSON.parse(v), null, 2); } catch (e) {} }
+    const was = chg.has(c.name) ? m.old[c.name] : undefined;
+    const old = !chg.has(c.name) ? '' : was === v ? '<span class="note">edited, then changed back</span>'
+      : `<span class="old">${was === null ? 'null' : esc(was)}</span>`;
+    return `<div class="kv ${chg.has(c.name) ? 'chg' : ''}"><div class="k">${esc(c.name)}</div><div class="v">${old}${v === null ? '<span class="null">null</span>' : esc(pretty)}</div></div>`;
+  }).join('');
+  $('drawer').classList.add('open');
+}
+
+let toastT;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3500); }
+
+// ── wiring ───────────────────────────────────────────────────────────────
+$('tlist').addEventListener('click', e => { const it = e.target.closest('.titem'); if (it) selectTable(it.dataset.t); });
+$('events').addEventListener('click', e => { const it = e.target.closest('.ev'); if (it) selectTable(it.dataset.t, true); });
+$('tFilter').addEventListener('input', () => S && renderTables(null));
+$('hideEmpty').addEventListener('change', () => S && renderTables(null));
+document.querySelectorAll('#tSort button').forEach(b => { b.classList.toggle('on', b.dataset.k === tSort); b.onclick = () => {
+  tSort = b.dataset.k; pref('tsort', tSort); document.querySelectorAll('#tSort button').forEach(x => x.classList.toggle('on', x === b)); renderTables(null); }; });
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { tab = b.dataset.k; showTab(); });
+let qT; $('rFilter').addEventListener('input', () => { clearTimeout(qT); qT = setTimeout(() => { page = 0; loadRows(true); }, 250); });
+$('onlyChanged').addEventListener('change', () => { page = 0; loadRows(true); });
+$('pPrev').onclick = () => { page = Math.max(0, page - 1); loadRows(true); };
+$('pNext').onclick = () => { page++; loadRows(true); };
+$('view').addEventListener('click', e => {
+  const th = e.target.closest('th[data-c]');
+  if (th) { const c = th.dataset.c || null; if (sort === c) desc = !desc; else { sort = c; desc = true; } page = 0; loadRows(true); return; }
+  const tr = e.target.closest('tr[data-i]'); if (tr) openRow(+tr.dataset.i);
+});
+$('dClose').onclick = () => $('drawer').classList.remove('open');
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('drawer').classList.remove('open'); });
+$('clear').onclick = () => api('/api/clear', {method: 'POST'});
+$('dbSel').onchange = e => api('/api/select?db=' + encodeURIComponent(e.target.value), {method: 'POST'});
+setInterval(() => S && setStatus(S.status), 1000);
+
+refresh().then(() => { if (sel) selectTable(sel); }); connect();
+</script>
+</body>
+</html>
