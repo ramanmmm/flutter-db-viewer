@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- `examples/checkLiveDb.sh` failed with "unbound variable" on macOS's bash 3.2
+  under a UTF-8 locale when installing or upgrading (a `…` right after
+  `$FLUTTERDB_REF` was read as part of the name). Covered by a new test that
+  runs the launcher with stand-in `curl` / `flutterdb`.
+
 ## [1.1.1] — 2026-10-27
 
 ### Fixed

@@ -27,10 +27,10 @@ install_flutterdb() {
 }
 
 if ! command -v flutterdb >/dev/null 2>&1; then
-  echo "flutterdb not installed — installing $FLUTTERDB_REF…"
+  echo "flutterdb not installed — installing ${FLUTTERDB_REF}…"
   install_flutterdb
 elif [[ "$FLUTTERDB_REF" == v* ]] && [[ "$(flutterdb --version 2>/dev/null)" != "flutterdb ${FLUTTERDB_REF#v}" ]]; then
-  echo "Updating flutterdb to $FLUTTERDB_REF…"
+  echo "Updating flutterdb to ${FLUTTERDB_REF}…"
   install_flutterdb
 fi
 
