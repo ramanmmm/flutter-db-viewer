@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] — 2026-10-27
+
+### Fixed
+- SQL console and recommendations that use table-valued PRAGMAs
+  (`pragma_table_info(…)`, `pragma_index_list(…)`) were refused on SQLite older
+  than 3.38 (e.g. python.org Python 3.9 on macOS), which reports an internal
+  schema-table check the read-only authorizer denied.
+
+### Changed
+- CI can be started manually (`workflow_dispatch`).
+
 ## [1.1.0] — 2026-10-27
 
 ### Added
@@ -63,5 +74,6 @@ First public release.
 - `--once` terminal summary, `--demo` built-in demo app, `--dir` for local files.
 - `install.sh` (no pip needed) and `examples/checkLiveDb.sh` per-project launcher.
 
+[1.1.1]: https://github.com/ramanmmm/flutter-db-viewer/releases/tag/v1.1.1
 [1.1.0]: https://github.com/ramanmmm/flutter-db-viewer/releases/tag/v1.1.0
 [1.0.0]: https://github.com/ramanmmm/flutter-db-viewer/releases/tag/v1.0.0

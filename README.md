@@ -70,7 +70,7 @@ curl -fsSL https://raw.githubusercontent.com/ramanmmm/flutter-db-viewer/main/ins
 Pin a release instead of `main`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ramanmmm/flutter-db-viewer/main/install.sh | FLUTTERDB_REF=v1.1.0 sh
+curl -fsSL https://raw.githubusercontent.com/ramanmmm/flutter-db-viewer/main/install.sh | FLUTTERDB_REF=v1.1.1 sh
 ```
 
 <details>
@@ -281,7 +281,7 @@ chmod +x checkLiveDb.sh
 ./checkLiveDb.sh --once     # summary in the terminal
 ```
 
-The script pins a release (`FLUTTERDB_REF=v1.1.0`) so the whole team runs the
+The script pins a release (`FLUTTERDB_REF=v1.1.1`) so the whole team runs the
 same version; bump it when you want an upgrade. Set `PACKAGE=` at the top if
 the app id can't be read from Gradle (e.g. it's computed).
 

@@ -66,7 +66,15 @@ _ALLOWED_ACTIONS = {
 _DENIED_FUNCTIONS = {"load_extension"}
 
 
+# SQLite < 3.38 reports an internal SQLITE_UPDATE on the schema table's
+# columns when a table-valued PRAGMA (pragma_table_info(…)) is first used.
+# Writes are impossible anyway (mode=ro + query_only); this keeps them working.
+_SCHEMA_TABLES = {"sqlite_master", "sqlite_schema", "sqlite_temp_master", "sqlite_temp_schema"}
+
+
 def _authorizer(action, arg1, arg2, dbname, source):
+    if action == sqlite3.SQLITE_UPDATE and (arg1 or "").lower() in _SCHEMA_TABLES and source is None:
+        return sqlite3.SQLITE_OK
     if action in _ALLOWED_ACTIONS:
         if action == getattr(sqlite3, "SQLITE_FUNCTION", 31) and (arg2 or "").lower() in _DENIED_FUNCTIONS:
             return sqlite3.SQLITE_DENY

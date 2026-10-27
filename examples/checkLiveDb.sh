@@ -15,8 +15,8 @@ set -euo pipefail
 
 # Leave empty to read applicationId from android/app/build.gradle(.kts).
 PACKAGE=""
-# Pin a release for reproducible team setups, e.g. v1.1.0 (or main).
-FLUTTERDB_REF="${FLUTTERDB_REF:-v1.1.0}"
+# Pin a release for reproducible team setups, e.g. v1.1.1 (or main).
+FLUTTERDB_REF="${FLUTTERDB_REF:-v1.1.1}"
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 export PATH="$HOME/.local/bin:$PATH"

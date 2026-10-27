@@ -93,6 +93,21 @@ class ReadOnlyQueryTest(Fixture):
             self.assertIn("read-only", self.denied(sql).lower() + " read-only", sql)
         self.assertEqual(self.ok("SELECT count(*) FROM docs__survey")["rows"], [[1500]], "nothing changed")
 
+    def test_authorizer_decisions(self):
+        ok, deny = sqlite3.SQLITE_OK, sqlite3.SQLITE_DENY
+        auth = s._authorizer
+        # What SQLite 3.37 asks while loading pragma_table_info(…) — must be allowed.
+        self.assertEqual(auth(sqlite3.SQLITE_UPDATE, "sqlite_master", "type", "main", None), ok)
+        self.assertEqual(auth(sqlite3.SQLITE_PRAGMA, "table_info", "t", None, None), ok)
+        self.assertEqual(auth(sqlite3.SQLITE_READ, "pragma_table_info", "name", "main", None), ok)
+        # Real writes, even to the schema table from a trigger/view, stay denied.
+        self.assertEqual(auth(sqlite3.SQLITE_UPDATE, "orders", "status", "main", None), deny)
+        self.assertEqual(auth(sqlite3.SQLITE_UPDATE, "sqlite_master", "sql", "main", "some_trigger"), deny)
+        self.assertEqual(auth(sqlite3.SQLITE_INSERT, "sqlite_master", None, "main", None), deny)
+        self.assertEqual(auth(sqlite3.SQLITE_PRAGMA, "user_version", "5", None, None), deny)
+        self.assertEqual(auth(sqlite3.SQLITE_PRAGMA, "writable_schema", None, None, None), deny)
+        self.assertEqual(auth(sqlite3.SQLITE_ATTACH, "/etc/hosts", None, None, None), deny)
+
     def test_one_statement_at_a_time(self):
         self.assertIn("one statement", self.denied("SELECT 1; SELECT 2"))
 
